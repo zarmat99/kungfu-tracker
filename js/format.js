@@ -47,9 +47,6 @@ export function fmtDuration(min) {
 
 export const fmtNum = (n, digits = 1) => n.toLocaleString("it-IT", { maximumFractionDigits: digits });
 
-/** "+0,6", "−1,2", "±0" */
-export const fmtSigned = n => `${n > 0.04 ? "+" : n < -0.04 ? "−" : "±"}${fmtNum(Math.abs(n))}`;
-
 /** "1 gara", "4 gare" */
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 

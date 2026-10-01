@@ -8,7 +8,7 @@ This repository holds only the code. The data lives in a private repository: the
 
 - **Log:** a quick form for a training session, with a button for the double lesson.
 - **Calendar:** every session and event by month, with hours by type.
-- **Competitions:** the next competition with a countdown and preparation notes, body weight against the category limit, palmarès, every competition with its matches round by round, the record against each opponent, and how each round number tends to go.
+- **Competitions:** the next competition with a countdown and preparation notes, palmarès, every competition with its matches round by round, the record against each opponent, and how each round number tends to go.
 
 ## How it works
 

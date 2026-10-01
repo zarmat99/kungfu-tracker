@@ -108,7 +108,7 @@ export function hideTip() {
 addEventListener("scroll", hideTip, { passive: true, capture: true });
 // a tap anywhere else closes the label
 addEventListener("pointerdown", e => {
-  if (!e.target.closest?.("[data-tip], .w-chart")) hideTip();
+  if (!e.target.closest?.("[data-tip]")) hideTip();
 }, { capture: true });
 
 /** First tap arms the button, a second tap within 3 s confirms. */

@@ -1,4 +1,4 @@
-// The numbers behind the competitions page: upcoming competitions, palmarès, opponents, rounds, weight category.
+// The numbers behind the competitions page: upcoming competitions, palmarès, opponents, rounds.
 import { today } from "./format.js";
 import { SPECIALTIES } from "./types.js";
 
@@ -96,10 +96,4 @@ export function roundsByNumber(comps) {
     });
   }
   return Array.from(rows, (items, i) => ({ number: i + 1, items: items || [] })).filter(row => row.items.length);
-}
-
-/** Upper weight limit of a category such as "−85 kg", "80–85 kg" or "−85 kg, Seniores"; null for "+90 kg" or no weight. */
-export function categoryLimit(category) {
-  const m = /(\+?)\s*(\d+(?:[.,]\d+)?)\s*kg/i.exec(category || "");
-  return m && !m[1] ? Number(m[2].replace(",", ".")) : null;
 }

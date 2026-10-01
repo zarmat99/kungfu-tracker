@@ -23,8 +23,6 @@
   --win: #4ade80;
   --draw: #a1a1aa;
   --loss: #f0525f;
-  /* what chart marks sit on, for the ring that keeps them apart */
-  --surface: #151417;
 
   --font: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --brush: "Ma Shan Zheng", "Kaiti SC", "STKaiti", "KaiTi", serif;
@@ -457,33 +455,6 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.5; }
 .add-comp { margin-top: 12px; min-height: 50px; font-size: 15px; }
 .add-comp .ico { width: 18px; height: 18px; }
 
-/* weight: a stat tile with its trend */
-.weight-card { position: relative; overflow: hidden; isolation: isolate; padding: 16px 16px 14px; }
-.weight-card .watermark { position: absolute; z-index: -1; right: -4px; bottom: -24px; font-family: var(--brush); font-size: 92px; line-height: 1; color: #fff; opacity: .045; pointer-events: none; }
-.w-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 12px; }
-.w-figure { display: flex; align-items: baseline; gap: 4px; }
-.w-figure b { font-size: 48px; font-weight: 700; letter-spacing: -.05em; line-height: 1; }
-.w-figure span { font-size: 16px; font-weight: 600; color: var(--text-2); }
-.w-side { grid-row: 2; grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0 8px; font-size: 13px; color: var(--text-3); }
-.w-side span + span::before { content: "·"; margin-right: 8px; }
-.w-delta { color: var(--text-2); }
-.w-head .chip-btn { grid-row: 1; grid-column: 2; }
-.w-chart { position: relative; height: 96px; margin: 20px 0 0; touch-action: pan-y; cursor: crosshair; border-radius: 6px; }
-.w-chart:focus-visible { outline-offset: 6px; }
-.w-chart i { font-style: normal; }
-.w-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.w-line { fill: none; stroke: rgba(255, 255, 255, .62); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.w-area { fill: rgba(255, 255, 255, .05); }
-.w-limit-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1.5px dashed rgba(240, 82, 95, .8); pointer-events: none; }
-.w-limit-line span { position: absolute; left: 0; bottom: 4px; padding: 0 5px; border-radius: 6px; font-size: 11px; font-weight: 700; color: var(--text-2); background: var(--surface); }
-.w-dot { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--c-gold); box-shadow: 0 0 0 2px var(--surface), 0 0 14px rgba(250, 204, 21, .7); transform: translate(-50%, -50%); pointer-events: none; transition: left .12s, top .12s; }
-.w-cross { position: absolute; top: -8px; bottom: -8px; width: 1px; margin-left: -.5px; background: rgba(255, 255, 255, .4); pointer-events: none; }
-.w-axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.w-limit { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-2); }
-.w-limit .ico { width: 17px; height: 17px; color: var(--win); }
-.w-limit.over .ico { color: var(--loss); }
-.w-empty { margin: 0 0 14px; font-size: 14px; color: var(--text-2); }
-
 /* palmarès */
 .palmares { position: relative; overflow: hidden; isolation: isolate; padding: 16px 16px 6px; }
 .palmares .watermark { position: absolute; z-index: -1; right: -6px; bottom: -20px; font-family: var(--brush); font-size: 92px; line-height: 1; color: var(--c-gold); opacity: .06; pointer-events: none; }
@@ -660,20 +631,6 @@ textarea.note-input { min-height: 0; resize: none; overflow: hidden; }
 .add-sp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .add-sp-chips .chip { gap: 6px; height: 40px; }
 .add-sp-chips .ico { width: 15px; height: 15px; }
-
-/* weight sheet */
-.weight-form { display: grid; gap: 14px; margin-bottom: 20px; }
-.kg-card:focus-within { border-color: rgba(255, 255, 255, .32); }
-.kg-field { display: flex; align-items: baseline; justify-content: center; gap: 6px; min-width: 0; cursor: text; }
-.kg-input { width: 4.4ch; min-width: 0; padding: 0; border: 0; outline: none; background: none; color: var(--text); font: inherit; font-size: 44px; font-weight: 700; letter-spacing: -.045em; text-align: center; }
-.kg-input::placeholder { color: var(--text-3); }
-.kg-field small { font-size: 16px; font-weight: 600; color: var(--text-2); }
-.weigh-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.weigh-list li { display: grid; grid-template-columns: 1fr auto 56px auto; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; border-radius: 14px; background: var(--card-flat); border: 1px solid var(--border); font-size: 14px; }
-.wl-date { color: var(--text-2); }
-.weigh-list b { font-variant-numeric: tabular-nums; }
-.wl-delta { font-size: 12.5px; color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
-.weigh-list .chip-btn { height: 34px; padding: 0 10px; }
 
 /* ---------- toast & stamp ---------- */
 .toasts { position: fixed; left: 50%; bottom: calc(86px + var(--bottom)); transform: translateX(-50%); z-index: 90; display: grid; gap: 8px; width: min(calc(100vw - 32px), 420px); pointer-events: none; }

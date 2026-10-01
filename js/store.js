@@ -55,13 +55,12 @@ export function disconnect() {
 }
 
 function normalize(data) {
-  return { version: 1, ...data, sessions: data.sessions || [], competitions: data.competitions || [], weights: data.weights || [] };
+  return { version: 1, ...data, sessions: data.sessions || [], competitions: data.competitions || [] };
 }
 
 function sortData(data) {
   data.sessions.sort(byDate);
   data.competitions.sort(byDate);
-  data.weights.sort(byDate);
 }
 
 function writeCache() {

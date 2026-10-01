@@ -1,18 +1,15 @@
 import { getState, subscribe, commit, load, errorMessage } from "../store.js";
 import { MEDALS, MEDAL_PLURALS, MEDAL_KEYS, LEVELS, LEVEL_CHOICES, RESULTS } from "../types.js";
-import { MONTHS, MONTHS_SHORT, cap, today, addDays, parseISO, daysBetween, fmtLongDate, fmtShortDate, fmtNum, fmtSigned, plural, esc } from "../format.js";
+import { MONTHS, MONTHS_SHORT, cap, today, parseISO, daysBetween, fmtLongDate, fmtShortDate, plural, esc } from "../format.js";
 import { icon } from "../icons.js";
-import { openSheet, closeSheet, sheetBody, toast, stamp, armConfirm, showTip, hideTip } from "../ui.js";
-import { byDate } from "../stats.js";
-import { hasResults, upcoming, awaitingResults, withResults, palmares, bySpecialty, opponents, roundsByNumber, roundOutcome, categoryLimit } from "../competition-stats.js";
+import { openSheet, closeSheet, sheetBody, toast, armConfirm, showTip, hideTip } from "../ui.js";
+import { hasResults, upcoming, awaitingResults, withResults, palmares, bySpecialty, opponents, roundsByNumber, roundOutcome } from "../competition-stats.js";
 
 const OPPONENTS_SHOWN = 5;
-const CHART_POINTS = 20;
 const OUTCOMES = { won: { label: "Vinto", mark: "V" }, draw: { label: "Pari", mark: "=" }, lost: { label: "Perso", mark: "P" } };
 
 const q = id => encodeURIComponent(id);
 const editLink = c => `#/competition-edit?id=${q(c.id)}`;
-const fmtKg = kg => kg.toFixed(1).replace(".", ",");
 
 /** "Sabato 15 maggio 2027", or "Maggio 2027" when the day is still to be confirmed. */
 export function whenLabel(c) {
@@ -23,8 +20,7 @@ export function whenLabel(c) {
 export function renderCompetitions(root, params) {
   let drawnData;
   let animate = true;
-  let sheet = null; // { kind: "competition", id } or { kind: "weight" }
-  let chart = null; // points of the weight chart, for the crosshair
+  let sheetId = null; // the competition shown in the sheet
   let allOpponents = false;
   const openOpponents = new Set();
   let openOnLoad = params.get("open");
@@ -52,7 +48,6 @@ export function renderCompetitions(root, params) {
         ${next.length ? nextCard(next[0]) : `<div class="card empty"><span class="cn" aria-hidden="true">空</span>Nessuna gara in programma</div>`}
         ${laterList(next.slice(1))}
         <a class="btn btn-ghost add-comp" href="#/competition-edit">${icon("plus")} Aggiungi una gara</a>
-        ${weightSection([...data.weights].sort(byDate), next[0], done[0])}
         ${done.length ? palmaresSection(done) + historySection(done) : ""}
         ${opponentsSection(comps)}
         ${roundsSection(comps)}
@@ -101,108 +96,6 @@ export function renderCompetitions(root, params) {
         <span class="later-name">${esc(c.name)}</span>
         <span class="later-days">${c.dateTbc ? "~" : ""}${daysBetween(today(), c.date)} gg</span>
       </button></li>`).join("")}</ul>`;
-  }
-
-  // ---------- weight ----------
-
-  function weightSection(weights, next, last) {
-    const ref = next?.category ? { comp: next, label: "prossima gara" } : last?.category ? { comp: last, label: "ultima gara" } : null;
-    const limit = ref ? categoryLimit(ref.comp.category) : null;
-    const latest = weights.at(-1);
-    let body;
-    if (!latest) {
-      chart = null;
-      body = `<p class="w-empty">Pesati ogni tanto: qui vedi come cambia il peso e quanto manca al limite della categoria.</p>
-        <button class="btn btn-ghost" data-weight>${icon("scale")} Registra il peso</button>`;
-    } else {
-      const prev = weights.at(-2);
-      const margin = limit != null ? limit - latest.kg : null;
-      body = `
-        <div class="w-head">
-          <div class="w-figure"><b>${fmtNum(latest.kg)}</b><span>kg</span></div>
-          <div class="w-side">
-            <span>${fmtShortDate(latest.date)}</span>
-            ${prev ? `<span class="w-delta">${fmtSigned(latest.kg - prev.kg)} kg dalla volta prima</span>` : ""}
-          </div>
-          <button class="chip-btn" data-weight>${icon("plus")} Pesati</button>
-        </div>
-        ${weightChart(weights, limit)}
-        ${margin == null ? "" : margin >= 0
-          ? `<p class="w-limit">${icon("check")} ${fmtNum(margin)} kg sotto il limite di ${fmtNum(limit)} kg</p>`
-          : `<p class="w-limit over">${icon("alert")} ${fmtNum(-margin)} kg sopra il limite di ${fmtNum(limit)} kg</p>`}`;
-    }
-    return `
-      <div class="section-title"><h2>Peso</h2><span>${ref ? `${esc(ref.comp.category)} · ${ref.label}` : ""}</span></div>
-      <article class="card weight-card"><span class="watermark" aria-hidden="true">体重</span>${body}</article>`;
-  }
-
-  function weightChart(weights, limit) {
-    const pts = weights.slice(-CHART_POINTS);
-    if (pts.length < 2) {
-      chart = null;
-      return "";
-    }
-    const times = pts.map(w => parseISO(w.date).getTime());
-    const t0 = times[0], t1 = times.at(-1);
-    const xs = times.map((t, i) => (t1 > t0 ? ((t - t0) / (t1 - t0)) * 100 : (i / (pts.length - 1)) * 100));
-    let lo = Math.min(...pts.map(p => p.kg)), hi = Math.max(...pts.map(p => p.kg));
-    const showLimit = limit != null && limit > lo - 3 && limit < hi + 3;
-    if (showLimit) {
-      lo = Math.min(lo, limit);
-      hi = Math.max(hi, limit);
-    }
-    const pad = Math.max(0.5, (hi - lo) * 0.18);
-    lo -= pad;
-    hi += pad;
-    const ys = pts.map(p => ((hi - p.kg) / (hi - lo)) * 100);
-    chart = { pts, xs, ys, index: pts.length - 1 };
-    const line = xs.map((x, i) => `${i ? "L" : "M"}${x.toFixed(2)} ${ys[i].toFixed(2)}`).join(" ");
-    const limitY = showLimit ? ((hi - limit) / (hi - lo)) * 100 : null;
-    const first = pts[0], last = pts.at(-1);
-    return `
-      <div class="w-chart" tabindex="0" role="img" aria-label="Andamento del peso: da ${fmtNum(first.kg)} kg il ${fmtShortDate(first.date)} a ${fmtNum(last.kg)} kg il ${fmtShortDate(last.date)}">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path class="w-area" d="${line} L100 100 L0 100 Z"/>
-          <path class="w-line" d="${line}" vector-effect="non-scaling-stroke"/>
-        </svg>
-        ${showLimit ? `<i class="w-limit-line" style="top:${limitY.toFixed(2)}%"><span>${fmtNum(limit)} kg</span></i>` : ""}
-        <i class="w-cross" hidden></i>
-        <i class="w-dot" style="left:100%;top:${ys.at(-1).toFixed(2)}%"></i>
-      </div>
-      <div class="w-axis" aria-hidden="true"><span>${fmtShortDate(first.date, first.date.slice(0, 4) !== last.date.slice(0, 4))}</span><span>${fmtShortDate(last.date, false)}</span></div>`;
-  }
-
-  function pointAt(el, i) {
-    if (!chart) return;
-    chart.index = i;
-    const r = el.getBoundingClientRect();
-    const x = r.left + (chart.xs[i] / 100) * r.width;
-    const y = r.top + (chart.ys[i] / 100) * r.height;
-    const cross = el.querySelector(".w-cross");
-    cross.hidden = false;
-    cross.style.left = `${chart.xs[i]}%`;
-    const dot = el.querySelector(".w-dot");
-    dot.style.left = `${chart.xs[i]}%`;
-    dot.style.top = `${chart.ys[i]}%`;
-    const p = chart.pts[i];
-    showTip({ left: x, right: x, top: y - 8, bottom: y + 8 }, `${fmtNum(p.kg)} kg`, fmtShortDate(p.date));
-  }
-
-  function resetChart(el) {
-    if (!chart) return;
-    hideTip();
-    el.querySelector(".w-cross").hidden = true;
-    const dot = el.querySelector(".w-dot");
-    dot.style.left = "100%";
-    dot.style.top = `${chart.ys.at(-1)}%`;
-  }
-
-  function nearest(el, clientX) {
-    const r = el.getBoundingClientRect();
-    const fx = ((clientX - r.left) / r.width) * 100;
-    let best = 0;
-    chart.xs.forEach((x, i) => { if (Math.abs(x - fx) < Math.abs(chart.xs[best] - fx)) best = i; });
-    return best;
   }
 
   // ---------- palmarès ----------
@@ -356,7 +249,7 @@ export function renderCompetitions(root, params) {
   function openCompetition(id) {
     const c = getState().data?.competitions.find(x => x.id === id);
     if (!c) return toast("Questa gara non esiste più", "error");
-    sheet = { kind: "competition", id };
+    sheetId = id;
     openSheet(competitionSheet(c)).addEventListener("click", onCompetitionSheetClick);
   }
 
@@ -380,136 +273,10 @@ export function renderCompetitions(root, params) {
     }
   }
 
-  // ---------- weight sheet ----------
-
-  function weighList() {
-    const weights = [...getState().data.weights].sort(byDate);
-    if (!weights.length) return "";
-    const offset = Math.max(0, weights.length - 8);
-    const rows = weights.slice(offset).map((w, i) => ({ w, prev: weights[offset + i - 1] })).reverse();
-    return `<p class="field-label">Ultime pesate</p>
-      <ul class="weigh-list">${rows.map(({ w, prev }) => `<li>
-        <span class="wl-date">${fmtShortDate(w.date)}</span>
-        <b>${fmtNum(w.kg)} kg</b>
-        <span class="wl-delta">${prev ? fmtSigned(w.kg - prev.kg) : ""}</span>
-        <button class="chip-btn danger" data-delete-weight="${esc(w.id)}" aria-label="Elimina la pesata del ${fmtShortDate(w.date)}">${icon("trash")}</button>
-      </li>`).join("")}</ul>`;
-  }
-
-  function openWeight() {
-    sheet = { kind: "weight" };
-    const weights = [...getState().data.weights].sort(byDate);
-    const lastKg = weights.at(-1)?.kg;
-    let date = today();
-    const body = openSheet(`
-      <div class="sheet-head">
-        <div><p class="eyebrow">Peso</p><h2>Registra il peso</h2></div>
-        <button class="icon-btn" data-close aria-label="Chiudi">${icon("x")}</button>
-      </div>
-      <form class="weight-form" novalidate>
-        <div class="card duration kg-card">
-          <button type="button" class="round-btn" data-kg-step="-0.1" aria-label="Meno 100 grammi">${icon("minus")}</button>
-          <label class="kg-field"><input class="kg-input" name="kg" inputmode="decimal" autocomplete="off" enterkeyhint="done" placeholder="80,0" value="${lastKg ? fmtKg(lastKg) : ""}" aria-label="Peso in chili"><small>kg</small></label>
-          <button type="button" class="round-btn" data-kg-step="0.1" aria-label="Più 100 grammi">${icon("plus")}</button>
-        </div>
-        <div class="date-chips">
-          <button type="button" class="chip" data-wday="today">Oggi</button>
-          <button type="button" class="chip" data-wday="yesterday">Ieri</button>
-          <label class="chip" data-wday="other"><span data-wday-label>Altro</span><input type="date" name="date" aria-label="Scegli il giorno"></label>
-        </div>
-        <button type="submit" class="btn btn-primary" data-save-weight>${icon("check")}<span>Salva</span></button>
-      </form>
-      <div data-weigh-list>${weighList()}</div>`);
-
-    const form = body.querySelector(".weight-form");
-    const input = form.querySelector("input[name=kg]");
-    const dateInput = form.querySelector("input[name=date]");
-    const save = form.querySelector("[data-save-weight]");
-    const parseKg = s => {
-      const n = parseFloat(String(s).replace(",", ".").replace(/[^\d.]/g, ""));
-      return Number.isFinite(n) ? Math.round(n * 10) / 10 : null;
-    };
-    const syncDate = () => {
-      const when = date === today() ? "today" : date === addDays(today(), -1) ? "yesterday" : "other";
-      form.querySelectorAll("[data-wday]").forEach(el => el.setAttribute("aria-pressed", String(el.dataset.wday === when)));
-      form.querySelector("[data-wday-label]").textContent = when === "other" ? fmtShortDate(date, false) : "Altro";
-      dateInput.value = date;
-    };
-
-    body.addEventListener("click", e => {
-      const el = e.target.closest("button, [data-wday]");
-      if (!el) return;
-      const d = el.dataset;
-      if ("close" in d) return closeSheet();
-      if (d.kgStep) {
-        const kg = parseKg(input.value) ?? lastKg ?? 80;
-        input.value = fmtKg(Math.round((kg + Number(d.kgStep)) * 10) / 10);
-        return;
-      }
-      if (d.wday === "today" || d.wday === "yesterday") {
-        date = d.wday === "today" ? today() : addDays(today(), -1);
-        return syncDate();
-      }
-      if (d.wday === "other" && matchMedia("(pointer: fine)").matches) {
-        try { dateInput.showPicker(); } catch { /* the native control opens on its own */ }
-        return;
-      }
-      if (d.deleteWeight) {
-        armConfirm(el, "Elimina", async () => {
-          const w = getState().data.weights.find(x => x.id === d.deleteWeight);
-          if (!w) return;
-          el.disabled = true;
-          try {
-            await commit(data => { data.weights = data.weights.filter(x => x.id !== w.id); }, `Delete weight ${w.date} (${w.kg} kg)`);
-            toast("Pesata eliminata");
-          } catch (err) {
-            toast(errorMessage(err), "error");
-            el.disabled = false;
-          }
-        });
-      }
-    });
-
-    dateInput.addEventListener("change", () => {
-      if (dateInput.value) date = dateInput.value;
-      syncDate();
-    });
-
-    form.addEventListener("submit", async e => {
-      e.preventDefault();
-      if (save.disabled) return;
-      const kg = parseKg(input.value);
-      if (kg == null || kg < 30 || kg > 200) {
-        toast("Scrivi il peso in chili, per esempio 82,4", "error");
-        input.focus();
-        return;
-      }
-      save.disabled = true;
-      save.innerHTML = `<span class="spinner"></span><span>Salvo su GitHub…</span>`;
-      try {
-        await commit(data => data.weights.push({ id: crypto.randomUUID(), date, kg, createdAt: Date.now() }), `Log weight ${date} (${kg} kg)`);
-        stamp("重");
-        toast("Peso salvato");
-        closeSheet();
-      } catch (err) {
-        toast(errorMessage(err), "error");
-        save.disabled = false;
-        save.innerHTML = `${icon("check")}<span>Salva</span>`;
-      }
-    });
-
-    syncDate();
-  }
-
   function refreshSheet() {
     const body = sheetBody();
-    if (!body || !sheet) return;
-    if (sheet.kind === "weight") {
-      const list = body.querySelector("[data-weigh-list]");
-      if (list) list.innerHTML = weighList();
-      return;
-    }
-    const c = getState().data.competitions.find(x => x.id === sheet.id);
+    if (!body || !sheetId) return;
+    const c = getState().data.competitions.find(x => x.id === sheetId);
     if (!c) return closeSheet();
     body.innerHTML = competitionSheet(c);
     body.querySelector(".sheet-list")?.classList.add("static");
@@ -518,12 +285,11 @@ export function renderCompetitions(root, params) {
   // ---------- events ----------
 
   root.addEventListener("click", e => {
-    if (e.target.closest("a, summary, .w-chart")) return;
+    if (e.target.closest("a, summary")) return;
     const tipped = e.target.closest("[data-tip]");
     if (tipped) return showTip(tipped.getBoundingClientRect(), tipped.dataset.tip, tipped.dataset.tipLabel);
     const open = e.target.closest("[data-open]");
     if (open) return openCompetition(open.dataset.open);
-    if (e.target.closest("[data-weight]")) return openWeight();
     if (e.target.closest("[data-all-opponents]")) {
       allOpponents = true;
       return draw();
@@ -534,38 +300,9 @@ export function renderCompetitions(root, params) {
   root.addEventListener("focusin", e => {
     const tipped = e.target.closest("[data-tip]");
     if (tipped && tipped.matches(":focus-visible")) showTip(tipped.getBoundingClientRect(), tipped.dataset.tip, tipped.dataset.tipLabel);
-    const el = e.target.closest(".w-chart");
-    if (el && chart && el.matches(":focus-visible")) pointAt(el, chart.index);
   });
   root.addEventListener("focusout", e => {
     if (e.target.closest("[data-tip]")) hideTip();
-    const el = e.target.closest(".w-chart");
-    if (el) resetChart(el);
-  });
-
-  // the weight chart follows the finger (or the mouse) and snaps to the nearest weigh-in
-  const onPointerDown = e => {
-    const el = e.target.closest?.(".w-chart");
-    if (el && chart) return pointAt(el, nearest(el, e.clientX));
-    const shown = root.querySelector(".w-chart");
-    if (shown) resetChart(shown);
-  };
-  document.addEventListener("pointerdown", onPointerDown);
-  root.addEventListener("pointermove", e => {
-    const el = e.target.closest(".w-chart");
-    if (el && chart && (e.pointerType === "mouse" || e.buttons)) pointAt(el, nearest(el, e.clientX));
-  });
-  root.addEventListener("pointerout", e => {
-    const el = e.target.closest(".w-chart");
-    if (el && e.pointerType === "mouse" && !el.contains(e.relatedTarget)) resetChart(el);
-  });
-  root.addEventListener("keydown", e => {
-    const el = e.target.closest(".w-chart");
-    if (!el || !chart || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-    e.preventDefault();
-    const last = chart.pts.length - 1;
-    const i = { ArrowLeft: chart.index - 1, ArrowRight: chart.index + 1, Home: 0, End: last }[e.key];
-    pointAt(el, Math.min(last, Math.max(0, i)));
   });
 
   // remember which opponents are open, so a refresh keeps them open
@@ -600,7 +337,6 @@ export function renderCompetitions(root, params) {
   return () => {
     unsubscribe();
     document.removeEventListener("keydown", onKey);
-    document.removeEventListener("pointerdown", onPointerDown);
     hideTip();
     closeSheet(true);
   };
