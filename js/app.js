@@ -35,11 +35,19 @@ const main = document.getElementById("main");
 const dock = document.querySelector(".dock");
 let cleanup = null;
 
+/** Icon and name of each dock tab; a tab missing from a page cached before it existed is just skipped. */
+const DOCK = {
+  calendar: ["calendar", "Calendario"],
+  progress: ["chart", "Grafici"],
+  log: ["plus", "Registra"],
+  competitions: ["trophy", "Gare"],
+};
+
 document.querySelector("[data-settings]").innerHTML = icon("sliders");
-dock.querySelector('[data-tab="calendar"]').innerHTML = `${icon("calendar")}<span>Calendario</span>`;
-dock.querySelector('[data-tab="progress"]').innerHTML = `${icon("chart")}<span>Grafici</span>`;
-dock.querySelector('[data-tab="log"]').innerHTML = `${icon("plus")}<span>Registra</span>`;
-dock.querySelector('[data-tab="competitions"]').innerHTML = `${icon("trophy")}<span>Gare</span>`;
+for (const [tab, [glyph, label]] of Object.entries(DOCK)) {
+  const link = dock.querySelector(`[data-tab="${tab}"]`);
+  if (link) link.innerHTML = `${icon(glyph)}<span>${label}</span>`;
+}
 
 function render() {
   const { name, params } = parseRoute();
