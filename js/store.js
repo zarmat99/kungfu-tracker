@@ -1,5 +1,6 @@
 // App state: the tracker data, its GitHub sha, and the connection settings.
 import * as github from "./github.js";
+import { byDate } from "./stats.js";
 
 const CONFIG_KEY = "kft.config";
 const CACHE_KEY = "kft.cache";
@@ -54,12 +55,13 @@ export function disconnect() {
 }
 
 function normalize(data) {
-  return { version: 1, ...data, sessions: data.sessions || [], competitions: data.competitions || [] };
+  return { version: 1, ...data, sessions: data.sessions || [], competitions: data.competitions || [], weights: data.weights || [] };
 }
 
 function sortData(data) {
-  data.sessions.sort((a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0));
-  data.competitions.sort((a, b) => a.date.localeCompare(b.date));
+  data.sessions.sort(byDate);
+  data.competitions.sort(byDate);
+  data.weights.sort(byDate);
 }
 
 function writeCache() {

@@ -32,6 +32,7 @@ export function stamp(glyph = "功") {
 
 export function openSheet(html, onMount) {
   closeSheet(true);
+  hideTip();
   const wrap = document.createElement("div");
   wrap.className = "sheet-wrap";
   wrap.innerHTML = `<div class="sheet-backdrop"></div><div class="sheet" role="dialog" aria-modal="true"><div class="sheet-handle"></div><div class="sheet-body">${html}</div></div>`;
@@ -74,6 +75,41 @@ export function closeSheet(immediate = false) {
 }
 
 export const sheetBody = () => document.querySelector(".sheet-wrap:not(.closing) .sheet-body");
+
+/**
+ * A small label over a chart mark: the value first, then what it refers to.
+ * `rect` is the mark's box in viewport coordinates; both texts go in as plain text.
+ */
+export function showTip(rect, value, label = "") {
+  let tip = document.querySelector(".tip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.className = "tip";
+    tip.setAttribute("role", "status");
+    tip.innerHTML = "<b></b><span></span>";
+    document.body.append(tip);
+  }
+  tip.querySelector("b").textContent = value;
+  tip.querySelector("span").textContent = label;
+  tip.hidden = false;
+  const below = rect.top - tip.offsetHeight - 14 < 70;
+  tip.classList.toggle("below", below);
+  const half = tip.offsetWidth / 2;
+  const x = (rect.left + rect.right) / 2;
+  tip.style.left = `${Math.min(Math.max(x, 12 + half), innerWidth - 12 - half)}px`;
+  tip.style.top = `${below ? rect.bottom : rect.top}px`;
+}
+
+export function hideTip() {
+  const tip = document.querySelector(".tip");
+  if (tip) tip.hidden = true;
+}
+
+addEventListener("scroll", hideTip, { passive: true, capture: true });
+// a tap anywhere else closes the label
+addEventListener("pointerdown", e => {
+  if (!e.target.closest?.("[data-tip], .w-chart")) hideTip();
+}, { capture: true });
 
 /** First tap arms the button, a second tap within 3 s confirms. */
 export function armConfirm(button, confirmLabel, onConfirm) {

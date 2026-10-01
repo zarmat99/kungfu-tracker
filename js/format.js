@@ -1,4 +1,5 @@
 export const MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+export const MONTHS_SHORT = MONTHS.map(m => m.slice(0, 3));
 export const WEEKDAYS = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
 export const WEEKDAY_INITIALS = ["L", "M", "M", "G", "V", "S", "D"];
 export const CN_MONTHS = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
@@ -19,6 +20,18 @@ export function addDays(s, n) {
   return iso(d);
 }
 
+/** Whole days from one ISO date to another: positive when `to` comes later. */
+export const daysBetween = (from, to) => Math.round((parseISO(to) - parseISO(from)) / 86400000);
+
+/** "Oggi", "Ieri", "3 giorni fa", "Domani", "Tra 5 giorni" */
+export function relativeDay(date) {
+  const days = daysBetween(today(), date);
+  if (days === 0) return "Oggi";
+  if (days === -1) return "Ieri";
+  if (days < -1) return `${-days} giorni fa`;
+  return days === 1 ? "Domani" : `Tra ${days} giorni`;
+}
+
 /** Monday of the week containing the given ISO date. */
 export function weekStart(s) {
   const d = parseISO(s);
@@ -34,10 +47,22 @@ export function fmtDuration(min) {
 
 export const fmtNum = (n, digits = 1) => n.toLocaleString("it-IT", { maximumFractionDigits: digits });
 
+/** "+0,6", "−1,2", "±0" */
+export const fmtSigned = n => `${n > 0.04 ? "+" : n < -0.04 ? "−" : "±"}${fmtNum(Math.abs(n))}`;
+
+/** "1 gara", "4 gare" */
+export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
 /** "Lunedì 28 settembre" */
 export function fmtLongDate(s) {
   const d = parseISO(s);
   return `${cap(WEEKDAYS[d.getDay()])} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+/** "16 mag 2026", or "16 mag" without the year; never split across lines */
+export function fmtShortDate(s, withYear = true) {
+  const d = parseISO(s);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ""}`;
 }
 
 export function fmtRelative(ts) {

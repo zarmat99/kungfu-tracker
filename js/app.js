@@ -2,12 +2,22 @@ import { loadCached, load, isConnected, subscribe, getState, errorMessage } from
 import { parseRoute, navigate } from "./router.js";
 import { renderCalendar } from "./views/calendar.js";
 import { renderLog } from "./views/log.js";
+import { renderCompetitions } from "./views/competitions.js";
+import { renderCompetitionForm } from "./views/competition-form.js";
 import { renderSettings } from "./views/settings.js";
 import { icon } from "./icons.js";
-import { toast, closeSheet } from "./ui.js";
+import { toast, closeSheet, hideTip } from "./ui.js";
 import { weekStreak } from "./stats.js";
 
-const VIEWS = { calendar: renderCalendar, log: renderLog, settings: renderSettings };
+const VIEWS = {
+  calendar: renderCalendar,
+  log: renderLog,
+  competitions: renderCompetitions,
+  "competition-edit": renderCompetitionForm,
+  settings: renderSettings,
+};
+/** The dock tab that stays lit on pages without their own tab. */
+const TAB_OF = { "competition-edit": "competitions" };
 const SYNC_LABELS = {
   idle: "Non collegato",
   loading: "Sincronizzo…",
@@ -24,19 +34,26 @@ let cleanup = null;
 document.querySelector("[data-settings]").innerHTML = icon("sliders");
 dock.querySelector('[data-tab="calendar"]').innerHTML = `${icon("calendar")}<span>Calendario</span>`;
 dock.querySelector('[data-tab="log"]').innerHTML = `${icon("plus")}<span>Registra</span>`;
+dock.querySelector('[data-tab="competitions"]').innerHTML = `${icon("trophy")}<span>Gare</span>`;
 
 function render() {
   const { name, params } = parseRoute();
   if (!isConnected() && name !== "settings") return navigate("#/settings", { replace: true });
   cleanup?.();
   closeSheet(true);
+  hideTip();
   // a fresh container per view, so listeners never pile up across navigations
   const container = document.createElement("div");
   main.replaceChildren(container);
   window.scrollTo(0, 0);
   cleanup = (VIEWS[name] || VIEWS.calendar)(container, params) || null;
   dock.hidden = !isConnected();
-  dock.querySelectorAll("[data-tab]").forEach(a => a.classList.toggle("active", a.dataset.tab === name));
+  const tab = TAB_OF[name] || name;
+  dock.querySelectorAll("[data-tab]").forEach(a => {
+    a.classList.toggle("active", a.dataset.tab === tab);
+    if (a.dataset.tab === tab) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
   updateChrome(getState());
   const { data, status } = getState();
   if (isConnected() && !data && status === "idle") load().catch(err => toast(errorMessage(err), "error"));

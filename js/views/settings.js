@@ -32,7 +32,7 @@ export function renderSettings(root) {
       <div class="status-row"><span>Repository</span><b>${esc(cfg.repo)}</b></div>
       <div class="status-row"><span>File</span><b>${esc(cfg.path)}</b></div>
       <div class="status-row"><span>Ultima sincronizzazione</span><b>${fmtRelative(syncedAt)}</b></div>
-      <div class="status-row"><span>Dati</span><b>${data ? `${data.sessions.length} sessioni · ${data.competitions.length} gare` : "—"}</b></div>
+      <div class="status-row"><span>Dati</span><b>${data ? `${data.sessions.length} sessioni · ${data.competitions.length} gare${data.weights.length ? ` · ${data.weights.length} pesate` : ""}` : "—"}</b></div>
       <div class="status-actions">
         <button class="btn btn-ghost" data-reload>${icon("refresh")} Ricarica</button>
         <button class="btn btn-danger" data-disconnect>${icon("logout")} Scollega</button>

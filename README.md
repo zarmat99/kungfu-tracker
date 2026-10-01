@@ -4,6 +4,12 @@ The page I use to log my kung fu training sessions and competitions: https://zar
 
 This repository holds only the code. The data lives in a private repository: the page reads and saves it through the GitHub API, using a fine-grained personal token that stays in the browser.
 
+## Sections
+
+- **Log:** a quick form for a training session, with a button for the double lesson.
+- **Calendar:** every session and event by month, with hours by type.
+- **Competitions:** the next competition with a countdown and preparation notes, body weight against the category limit, palmarès, every competition with its matches round by round, the record against each opponent, and how each round number tends to go.
+
 ## How it works
 
 - Static site with no build step: plain HTML, CSS and JavaScript modules.

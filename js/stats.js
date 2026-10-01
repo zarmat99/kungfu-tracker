@@ -1,5 +1,8 @@
 import { addDays, today, weekStart } from "./format.js";
 
+/** Sort order for anything with a date: by day, then by when it was entered. */
+export const byDate = (a, b) => a.date.localeCompare(b.date) || (a.createdAt || 0) - (b.createdAt || 0);
+
 export function groupByDate(items) {
   const map = new Map();
   for (const item of items) {

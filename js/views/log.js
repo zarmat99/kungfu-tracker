@@ -1,6 +1,6 @@
 import { getState, subscribe, commit, errorMessage } from "../store.js";
 import { TYPES } from "../types.js";
-import { today, addDays, parseISO, fmtLongDate, fmtDuration, esc } from "../format.js";
+import { today, addDays, relativeDay, fmtLongDate, fmtDuration, esc } from "../format.js";
 import { icon } from "../icons.js";
 import { toast, stamp } from "../ui.js";
 import { navigate } from "../router.js";
@@ -98,14 +98,6 @@ export function renderLog(root, params) {
     if (date === today()) return "today";
     if (date === addDays(today(), -1)) return "yesterday";
     return "other";
-  }
-
-  function relativeDay(date) {
-    const days = Math.round((parseISO(today()) - parseISO(date)) / 86400000);
-    if (days === 0) return "Oggi";
-    if (days === 1) return "Ieri";
-    if (days > 1) return `${days} giorni fa`;
-    return days === -1 ? "Domani" : `Tra ${-days} giorni`;
   }
 
   function update() {

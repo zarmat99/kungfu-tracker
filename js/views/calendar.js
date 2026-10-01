@@ -1,10 +1,17 @@
 import { getState, subscribe, commit, load, errorMessage } from "../store.js";
 import { typeOf, MEDALS, LEVELS } from "../types.js";
-import { MONTHS, CN_MONTHS, WEEKDAYS, WEEKDAY_INITIALS, pad, iso, today, parseISO, cap, fmtDuration, fmtNum, fmtLongDate, esc } from "../format.js";
+import { MONTHS, CN_MONTHS, WEEKDAYS, WEEKDAY_INITIALS, pad, iso, today, parseISO, cap, daysBetween, fmtDuration, fmtNum, fmtLongDate, esc } from "../format.js";
 import { icon } from "../icons.js";
 import { openSheet, closeSheet, sheetBody, toast, armConfirm } from "../ui.js";
 import { groupByDate, summarize } from "../stats.js";
 import { navigate } from "../router.js";
+import { hasResults } from "../competition-stats.js";
+
+/** "In programma", "Risultati da inserire", or nothing once the results are in. */
+function compStatus(c, now) {
+  if (hasResults(c)) return "";
+  return c.date >= now ? `In programma${c.dateTbc ? ", data da confermare" : ""}` : "Risultati da inserire";
+}
 
 export function renderCalendar(root, params) {
   const now = today();
@@ -119,12 +126,13 @@ export function renderCalendar(root, params) {
   }
 
   function compEntry(c, i) {
+    const status = compStatus(c, now);
     return `<li class="entry comp" style="--i:${i}" data-day="${c.date}">
       <span class="watermark" aria-hidden="true">赛</span>
       ${entryDate(c.date)}
       <div>
         <div class="entry-top"><span class="glyph">赛</span><span class="label">${esc(c.name)}</span></div>
-        <p class="entry-notes">${esc(c.location)} <span class="medal-row">${c.specialties.map(sp => `<span class="medal medal-${sp.medal}" title="${esc(sp.name)}"></span>`).join("")}</span></p>
+        <p class="entry-notes">${esc([c.location, status].filter(Boolean).join(" · "))} <span class="medal-row">${c.specialties.filter(sp => MEDALS[sp.medal]).map(sp => `<span class="medal medal-${sp.medal}" title="${esc(sp.name)}"></span>`).join("")}</span></p>
       </div>
     </li>`;
   }
@@ -169,12 +177,18 @@ export function renderCalendar(root, params) {
   }
 
   function compCard(c, i) {
+    const status = compStatus(c, now);
+    const days = daysBetween(now, c.date);
     return `<article class="s-card c-card" style="--i:${i}">
       <span class="watermark" aria-hidden="true">赛</span>
       <p class="s-type">${LEVELS[c.level] || "Gara"}</p>
       <h3 class="s-title">${esc(c.name)}</h3>
-      <p class="s-meta">${icon("pin")} ${esc(c.location)}${c.category ? ` · ${esc(c.category)}` : ""}</p>
-      <ul class="medals">${c.specialties.map(sp => `<li><span class="medal medal-${sp.medal}"></span>${esc(sp.name)} <span class="muted">${MEDALS[sp.medal] || ""}</span></li>`).join("")}</ul>
+      ${c.location || c.category ? `<p class="s-meta">${icon("pin")} ${esc([c.location, c.category].filter(Boolean).join(" · "))}</p>` : ""}
+      ${status ? `<p class="s-meta">${icon("clock")} ${status}${days > 0 ? ` · ${c.dateTbc ? "circa " : ""}tra ${days} ${days === 1 ? "giorno" : "giorni"}` : ""}</p>` : ""}
+      ${c.specialties.length ? `<ul class="medals">${c.specialties.map(sp => `<li>${MEDALS[sp.medal] ? `<span class="medal medal-${sp.medal}"></span>` : `<span class="medal medal-none"></span>`}${esc(sp.name)} <span class="muted">${MEDALS[sp.medal] || ""}</span></li>`).join("")}</ul>` : ""}
+      <div class="s-actions">
+        <button class="chip-btn" data-comp="${esc(c.id)}">${icon("trophy")} Dettagli</button>
+      </div>
     </article>`;
   }
 
@@ -198,6 +212,7 @@ export function renderCalendar(root, params) {
     const btn = e.target.closest("button");
     if (!btn) return;
     if ("close" in btn.dataset) return closeSheet();
+    if (btn.dataset.comp) return navigate(`#/competitions?open=${encodeURIComponent(btn.dataset.comp)}`);
     if (btn.dataset.add) return navigate(`#/log?date=${btn.dataset.add}`);
     if (btn.dataset.edit) return navigate(`#/log?id=${btn.dataset.edit}`);
     if (btn.dataset.delete) {

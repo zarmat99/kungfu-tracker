@@ -11,4 +11,11 @@ export const TYPE_KEYS = Object.keys(TYPES);
 export const typeOf = key => TYPES[key] || { label: key, sub: "", glyph: "拳", color: "var(--c-other)", duration: 90 };
 
 export const MEDALS = { gold: "Oro", silver: "Argento", bronze: "Bronzo" };
+export const MEDAL_PLURALS = { gold: "Ori", silver: "Argenti", bronze: "Bronzi" };
+export const MEDAL_KEYS = Object.keys(MEDALS);
 export const LEVELS = { international: "Gara internazionale", national: "Gara nazionale" };
+export const LEVEL_CHOICES = { national: "Nazionale", international: "Internazionale" };
+export const RESULTS = { won: "Vinto", lost: "Perso" };
+
+/** Offered first in the competition form; any other specialty can be typed in. */
+export const SPECIALTIES = ["Tuishou piedi fissi", "Tuishou in movimento", "Sanda Light"];
