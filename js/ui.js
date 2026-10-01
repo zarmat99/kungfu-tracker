@@ -1,4 +1,15 @@
 import { icon } from "./icons.js";
+import { typeOf } from "./types.js";
+import { fmtNum, esc } from "./format.js";
+
+/** Hours by type as one bar with its legend, biggest first. `byType` maps each type to minutes. */
+export function typeBar(byType) {
+  const entries = Object.entries(byType).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return `<div class="typebar none"><i></i></div>`;
+  return `
+    <div class="typebar">${entries.map(([k, m]) => `<i style="--c:${typeOf(k).color};flex:${m}"></i>`).join("")}</div>
+    <div class="legend">${entries.map(([k, m]) => `<span style="--c:${typeOf(k).color}">${esc(typeOf(k).label)} <b>${fmtNum(m / 60)} h</b></span>`).join("")}</div>`;
+}
 
 export function toast(message, kind = "ok") {
   let host = document.querySelector(".toasts");
@@ -106,9 +117,9 @@ export function hideTip() {
 }
 
 addEventListener("scroll", hideTip, { passive: true, capture: true });
-// a tap anywhere else closes the label
+// a tap anywhere else closes the label (a tip zone is a chart that picks the mark under the finger itself)
 addEventListener("pointerdown", e => {
-  if (!e.target.closest?.("[data-tip]")) hideTip();
+  if (!e.target.closest?.("[data-tip], [data-tip-zone]")) hideTip();
 }, { capture: true });
 
 /** First tap arms the button, a second tap within 3 s confirms. */

@@ -552,7 +552,7 @@ details[open] .chev { transform: rotate(180deg); }
 
 /* label over a chart mark */
 .tip {
-  position: fixed; z-index: 95; left: 0; top: 0; max-width: min(280px, calc(100vw - 24px)); pointer-events: none;
+  position: fixed; z-index: 95; left: 0; top: 0; width: max-content; max-width: min(280px, calc(100vw - 24px)); pointer-events: none;
   transform: translate(-50%, calc(-100% - 10px)); padding: 8px 12px; border-radius: 12px;
   background: rgba(26, 24, 30, .96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-strong); box-shadow: 0 16px 34px -14px rgba(0, 0, 0, .95);
@@ -632,6 +632,133 @@ textarea.note-input { min-height: 0; resize: none; overflow: hidden; }
 .add-sp-chips .chip { gap: 6px; height: 40px; }
 .add-sp-chips .ico { width: 15px; height: 15px; }
 
+/* ---------- progress ---------- */
+.season-hero {
+  position: relative; overflow: hidden; isolation: isolate; padding: 20px 18px 16px; border-radius: 26px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(224, 49, 43, .22), transparent 55%),
+    radial-gradient(110% 90% at 0% 100%, rgba(45, 212, 191, .12), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
+  border: 1px solid rgba(224, 49, 43, .3);
+  box-shadow: 0 30px 70px -34px rgba(224, 49, 43, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.season-hero .watermark { position: absolute; z-index: -1; right: -4px; top: -8px; font-family: var(--brush); font-size: 120px; line-height: 1; color: var(--seal); opacity: .13; pointer-events: none; }
+.hero-figure { display: flex; align-items: baseline; gap: 10px; margin-top: 16px; }
+.hero-figure b {
+  font-size: clamp(58px, 19vw, 76px); font-weight: 700; letter-spacing: -.06em; line-height: .82; padding-right: .04em;
+  background: linear-gradient(180deg, #fff 30%, #ff8a75 150%); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero-figure span { font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-2); }
+.hero-sub { margin: 12px 0 0; font-size: 14px; color: var(--text-2); }
+.season-hero .typebar { margin: 16px 0 10px; }
+.hero-compare { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13.5px; color: var(--text-2); }
+.hero-compare .ico { width: 16px; height: 16px; margin-top: 1px; color: var(--text-3); }
+
+/* goals: competitions to come and personal milestones */
+.goal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.goal-row {
+  position: relative; overflow: hidden; display: grid; grid-template-columns: 62px 1fr 18px; align-items: center; gap: 12px;
+  padding: 14px 12px 14px 16px; border-radius: 20px; background: var(--card); border: 1px solid var(--border);
+  text-decoration: none; transition: transform .15s, border-color .2s;
+}
+.goal-row:active { transform: scale(.985); }
+.goal-row::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 3px 3px 0; background: var(--k); box-shadow: 0 0 14px var(--k); }
+.goal-row.competition { --k: var(--c-gold); }
+.goal-row.goal { --k: var(--cream); }
+.g-days { display: grid; justify-items: center; line-height: 1; }
+.g-days b { font-size: 28px; font-weight: 700; letter-spacing: -.045em; }
+.g-days .approx { font-style: normal; font-size: .55em; vertical-align: .35em; margin-right: .04em; color: var(--text-2); }
+.g-days small { margin-top: 5px; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.g-main { display: grid; gap: 3px; min-width: 0; }
+.g-kind { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
+.g-kind .ico { width: 13px; height: 13px; color: var(--k); }
+.g-name { font-size: 15.5px; line-height: 1.25; letter-spacing: -.01em; }
+.g-when { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; color: var(--text-2); }
+.g-notes { margin-top: 3px; font-size: 13px; color: var(--text-2); white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.g-chev { width: 18px; height: 18px; color: var(--text-3); }
+.goal-row.flash, .goal-past-row.flash { animation: goalflash 1.4s var(--ease) 2; }
+@keyframes goalflash { 30% { border-color: var(--k, #fff); box-shadow: 0 0 0 3px color-mix(in srgb, var(--k, #fff) 40%, transparent); } }
+.add-goal { margin-top: 12px; min-height: 50px; font-size: 15px; }
+.add-goal .ico { width: 18px; height: 18px; }
+.past-label { margin: 22px 2px 10px; }
+.goal-past { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.goal-past-row { display: grid; grid-template-columns: auto 1fr 18px; align-items: center; gap: 12px; padding: 12px 12px 12px 14px; border-radius: 16px; background: var(--card-flat); border: 1px solid var(--border); text-decoration: none; }
+.goal-past-row span { font-size: 12.5px; font-weight: 700; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.goal-past-row b { min-width: 0; font-weight: 600; color: var(--text-2); }
+.form-delete { display: flex; justify-content: center; }
+
+/* streaks and weeks: one row per season, one bar per week */
+.streak-stats { grid-template-columns: 1fr 1fr; margin-bottom: 10px; }
+.stat small { display: block; margin-top: 3px; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.weeks-card, .seasons-card { position: relative; overflow: hidden; isolation: isolate; padding: 14px 16px 4px; }
+.weeks-card .watermark, .seasons-card .watermark { position: absolute; z-index: -1; right: -6px; top: -14px; font-family: var(--brush); font-size: 96px; line-height: 1; color: #fff; opacity: .04; pointer-events: none; }
+.chart-note { margin: 0; font-size: 12.5px; color: var(--text-3); }
+.wk-legend { margin: 8px 0 2px; }
+.wk-legend span::before { display: none; }
+.wk-legend .ico { width: 12px; height: 12px; }
+.mk-comp .ico { color: var(--c-gold); }
+.mk-goal .ico { color: var(--cream); }
+.mk-now i { width: 7px; height: 7px; border-radius: 50%; background: var(--seal); box-shadow: 0 0 8px var(--seal); }
+.wk-row { padding: 12px 0 2px; }
+.wk-row + .wk-row { border-top: 1px solid var(--border); }
+.wk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.wk-head b { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.wk-head span { font-size: 12px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wk-plot { --area: 38px; position: relative; height: calc(var(--area) + 20px); margin-top: 4px; touch-action: pan-y; cursor: crosshair; border-radius: 6px; }
+.wk-plot.tall { height: calc(var(--area) + 40px); }
+.wk-plot::after { content: ""; position: absolute; left: 0; right: 0; bottom: 7px; height: 1px; background: rgba(255, 255, 255, .1); pointer-events: none; }
+.wk-bar, .wk-dot { position: absolute; bottom: 8px; width: calc(100% * 5 / 373); pointer-events: none; }
+.wk-bar { height: max(2px, calc(var(--h) * var(--area))); border-radius: 2px 2px 0 0; background: var(--text-3); transition: background .15s; }
+.wk-row.current .wk-bar { background: var(--text); }
+.wk-bar.on { background: #d8d4cf; }
+.wk-row.current .wk-bar.on { background: #fff; box-shadow: 0 0 10px rgba(255, 255, 255, .55); }
+/* a week without sessions shows only when picked */
+.wk-dot { height: 3px; border-radius: 1px; }
+.wk-dot.on { background: #fff; }
+.wk-today { position: absolute; bottom: 0; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--seal); box-shadow: 0 0 8px var(--seal); pointer-events: none; }
+.wk-mark { position: absolute; bottom: calc(10px + var(--h) * var(--area)); width: 11px; height: 11px; margin-left: -5.5px; pointer-events: none; }
+.wk-mark .ico { display: block; width: 11px; height: 11px; }
+.wk-mark.competition { color: var(--c-gold); filter: drop-shadow(0 0 4px rgba(250, 204, 21, .6)); }
+.wk-mark.goal { color: var(--cream); }
+.wk-bracket { position: absolute; top: 18px; height: 5px; border: 1px solid rgba(255, 255, 255, .3); border-bottom: 0; border-radius: 3px 3px 0 0; pointer-events: none; }
+.wk-bracket em { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 11px; font-weight: 600; line-height: 1.2; color: var(--text-2); white-space: nowrap; }
+.wk-bracket.start em { left: -1px; transform: none; }
+.wk-bracket.end em { left: auto; right: -1px; transform: none; }
+.wk-axis { position: relative; height: 16px; margin-top: 10px; }
+.wk-axis span { position: absolute; top: 0; font-size: 10.5px; font-weight: 600; color: var(--text-3); }
+.wk-axis span::before { content: ""; position: absolute; left: 0; top: -6px; width: 1px; height: 4px; background: var(--border-strong); }
+/* on small phones every other month keeps only its tick */
+@media (max-width: 380px) { .wk-axis span:nth-child(even) { color: transparent; } }
+
+/* hours per season, stacked by type */
+.ss-legend { margin: 2px 0 6px; }
+.ss-legend span::before { border-radius: 2px; box-shadow: none; }
+.ss-row { display: grid; grid-template-columns: 62px 1fr; align-items: center; gap: 10px; padding: 9px 0; }
+.ss-row + .ss-row { border-top: 1px solid var(--border); }
+.ss-label b { display: block; font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ss-label small { display: block; margin-top: 1px; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.ss-track { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ss-bar { flex: none; display: flex; gap: 2px; height: 20px; width: calc((100% - 64px) * var(--f)); }
+.ss-seg { flex: 1 1 0; min-width: 3px; height: 100%; padding: 0; border: 0; border-radius: 0; background: var(--c); cursor: pointer; transition: filter .15s; }
+.ss-seg:last-child { border-radius: 0 4px 4px 0; }
+.ss-seg:hover { filter: brightness(1.15); }
+.ss-total { font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* the numbers behind a chart */
+.numbers { margin-top: 10px; border-top: 1px solid var(--border); }
+.numbers summary { display: inline-flex; align-items: center; gap: 6px; padding: 12px 2px; font-size: 13px; font-weight: 600; color: var(--text-2); cursor: pointer; list-style: none; }
+.numbers summary::-webkit-details-marker { display: none; }
+.numbers summary .chev { width: 16px; height: 16px; }
+.numbers table { width: 100%; margin-bottom: 12px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.numbers caption { padding: 0 2px 6px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-3); }
+.numbers th, .numbers td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.numbers thead th { font-size: 11.5px; font-weight: 700; color: var(--text-2); }
+.numbers tbody th, .numbers tfoot th { text-align: left; font-weight: 600; color: var(--text-2); }
+.numbers tfoot td { font-weight: 700; }
+.numbers tfoot tr:last-child > * { border-bottom: 0; }
+.th-type::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 2px; background: var(--c); vertical-align: 2px; }
+.th-type span[aria-hidden] { font-family: var(--brush); font-size: 15px; font-weight: 400; color: var(--text); }
+
 /* ---------- toast & stamp ---------- */
 .toasts { position: fixed; left: 50%; bottom: calc(86px + var(--bottom)); transform: translateX(-50%); z-index: 90; display: grid; gap: 8px; width: min(calc(100vw - 32px), 420px); pointer-events: none; }
 .toast {
@@ -660,6 +787,11 @@ textarea.note-input { min-height: 0; resize: none; overflow: hidden; }
 
 @media (min-width: 600px) {
   .shell { padding-top: 12px; }
+}
+/* small phones: the dock keeps every section on one line */
+@media (max-width: 360px) {
+  .dock { gap: 4px; padding: 5px; }
+  .dock a { min-width: 46px; padding: 0 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

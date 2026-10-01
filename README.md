@@ -9,6 +9,7 @@ This repository holds only the code. The data lives in a private repository: the
 - **Log:** a quick form for a training session, with a button for the double lesson.
 - **Calendar:** every session and event by month, with hours by type.
 - **Competitions:** the next competition with a countdown and preparation notes, palmarès, every competition with its matches round by round, the record against each opponent, and how each round number tends to go.
+- **Progress:** the current season at a glance, the goals ahead (competitions to come and personal milestones such as a grade exam) with a countdown, attendance week by week in every season with the streaks, and hours per season by type. Each chart has its numbers in a table too.
 
 ## How it works
 

@@ -4,6 +4,8 @@ import { renderCalendar } from "./views/calendar.js";
 import { renderLog } from "./views/log.js";
 import { renderCompetitions } from "./views/competitions.js";
 import { renderCompetitionForm } from "./views/competition-form.js";
+import { renderProgress } from "./views/progress.js";
+import { renderGoalForm } from "./views/goal-form.js";
 import { renderSettings } from "./views/settings.js";
 import { icon } from "./icons.js";
 import { toast, closeSheet, hideTip } from "./ui.js";
@@ -14,10 +16,12 @@ const VIEWS = {
   log: renderLog,
   competitions: renderCompetitions,
   "competition-edit": renderCompetitionForm,
+  progress: renderProgress,
+  "goal-edit": renderGoalForm,
   settings: renderSettings,
 };
 /** The dock tab that stays lit on pages without their own tab. */
-const TAB_OF = { "competition-edit": "competitions" };
+const TAB_OF = { "competition-edit": "competitions", "goal-edit": "progress" };
 const SYNC_LABELS = {
   idle: "Non collegato",
   loading: "Sincronizzo…",
@@ -33,6 +37,7 @@ let cleanup = null;
 
 document.querySelector("[data-settings]").innerHTML = icon("sliders");
 dock.querySelector('[data-tab="calendar"]').innerHTML = `${icon("calendar")}<span>Calendario</span>`;
+dock.querySelector('[data-tab="progress"]').innerHTML = `${icon("chart")}<span>Grafici</span>`;
 dock.querySelector('[data-tab="log"]').innerHTML = `${icon("plus")}<span>Registra</span>`;
 dock.querySelector('[data-tab="competitions"]').innerHTML = `${icon("trophy")}<span>Gare</span>`;
 

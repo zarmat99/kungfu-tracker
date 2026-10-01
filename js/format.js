@@ -20,6 +20,14 @@ export function addDays(s, n) {
   return iso(d);
 }
 
+/** The same day `n` years later (or earlier); 29 February becomes the 28th. */
+export function addYears(s, n) {
+  const [y, m, d] = s.split("-").map(Number);
+  const date = new Date(y + n, m - 1, d);
+  if (date.getMonth() !== m - 1) date.setDate(0);
+  return iso(date);
+}
+
 /** Whole days from one ISO date to another: positive when `to` comes later. */
 export const daysBetween = (from, to) => Math.round((parseISO(to) - parseISO(from)) / 86400000);
 
@@ -60,6 +68,24 @@ export function fmtLongDate(s) {
 export function fmtShortDate(s, withYear = true) {
   const d = parseISO(s);
   return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ""}`;
+}
+
+/** "8 gen–4 lug 2026", or "3 set 2025–4 lug 2026" across two years; never split across lines */
+export function fmtSpan(from, to) {
+  if (from === to) return fmtShortDate(to);
+  const a = parseISO(from), b = parseISO(to);
+  const start = a.getFullYear() !== b.getFullYear() ? fmtShortDate(from) : a.getMonth() !== b.getMonth() ? fmtShortDate(from, false) : a.getDate();
+  // the word joiner keeps the line from breaking after the dash
+  return `${start}–⁠${fmtShortDate(to)}`;
+}
+
+/** "12–18 gen 2026", "29 set–5 ott 2025": the week starting on `monday` */
+export const fmtWeek = monday => fmtSpan(monday, addDays(monday, 6));
+
+/** "Sabato 15 maggio 2027", or "Maggio 2027" when the day is still to be confirmed. */
+export function whenLabel(item) {
+  const d = parseISO(item.date);
+  return item.dateTbc ? `${cap(MONTHS[d.getMonth()])} ${d.getFullYear()}` : `${fmtLongDate(item.date)} ${d.getFullYear()}`;
 }
 
 export function fmtRelative(ts) {

@@ -2,7 +2,7 @@ import { getState, subscribe, commit, load, errorMessage } from "../store.js";
 import { typeOf, MEDALS, LEVELS } from "../types.js";
 import { MONTHS, CN_MONTHS, WEEKDAYS, WEEKDAY_INITIALS, pad, iso, today, parseISO, cap, daysBetween, fmtDuration, fmtNum, fmtLongDate, esc } from "../format.js";
 import { icon } from "../icons.js";
-import { openSheet, closeSheet, sheetBody, toast, armConfirm } from "../ui.js";
+import { openSheet, closeSheet, sheetBody, toast, armConfirm, typeBar } from "../ui.js";
 import { groupByDate, summarize } from "../stats.js";
 import { navigate } from "../router.js";
 import { hasResults } from "../competition-stats.js";
@@ -53,7 +53,7 @@ export function renderCalendar(root, params) {
           <div class="stat"><b>${fmtNum(sum.minutes / 60)}</b><span>Ore</span></div>
           <div class="stat"><b>${sum.days}</b><span>Giorni</span></div>
         </div>
-        ${typeBar(sum)}
+        ${typeBar(sum.byType)}
         <div class="weekdays">${WEEKDAY_INITIALS.map(d => `<span>${d}</span>`).join("")}</div>
         <div class="grid ${slide}">${cells(groupByDate(sessions), groupByDate(comps))}</div>
         <div class="section-title"><h2>Sessioni di ${MONTHS[month]}</h2><span>${sum.count ? fmtDuration(sum.minutes) : ""}</span></div>
@@ -61,14 +61,6 @@ export function renderCalendar(root, params) {
       </section>`;
     slide = "";
     animate = false;
-  }
-
-  function typeBar(sum) {
-    const entries = Object.entries(sum.byType).sort((a, b) => b[1] - a[1]);
-    if (!entries.length) return `<div class="typebar none"><i></i></div>`;
-    return `
-      <div class="typebar">${entries.map(([k, m]) => `<i style="--c:${typeOf(k).color};flex:${m}"></i>`).join("")}</div>
-      <div class="legend">${entries.map(([k, m]) => `<span style="--c:${typeOf(k).color}">${typeOf(k).label} <b>${fmtNum(m / 60)} h</b></span>`).join("")}</div>`;
   }
 
   function cells(byDate, compsByDate) {

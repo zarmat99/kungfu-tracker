@@ -1,6 +1,6 @@
 import { getState, subscribe, commit, load, errorMessage } from "../store.js";
 import { MEDALS, MEDAL_PLURALS, MEDAL_KEYS, LEVELS, LEVEL_CHOICES, RESULTS } from "../types.js";
-import { MONTHS, MONTHS_SHORT, cap, today, parseISO, daysBetween, fmtLongDate, fmtShortDate, plural, esc } from "../format.js";
+import { MONTHS_SHORT, today, parseISO, daysBetween, fmtShortDate, whenLabel, plural, esc } from "../format.js";
 import { icon } from "../icons.js";
 import { openSheet, closeSheet, sheetBody, toast, armConfirm, showTip, hideTip } from "../ui.js";
 import { hasResults, upcoming, awaitingResults, withResults, palmares, bySpecialty, opponents, roundsByNumber, roundOutcome } from "../competition-stats.js";
@@ -10,12 +10,6 @@ const OUTCOMES = { won: { label: "Vinto", mark: "V" }, draw: { label: "Pari", ma
 
 const q = id => encodeURIComponent(id);
 const editLink = c => `#/competition-edit?id=${q(c.id)}`;
-
-/** "Sabato 15 maggio 2027", or "Maggio 2027" when the day is still to be confirmed. */
-export function whenLabel(c) {
-  const d = parseISO(c.date);
-  return c.dateTbc ? `${cap(MONTHS[d.getMonth()])} ${d.getFullYear()}` : `${fmtLongDate(c.date)} ${d.getFullYear()}`;
-}
 
 export function renderCompetitions(root, params) {
   let drawnData;
