@@ -77,7 +77,8 @@ export function fileKind(path) {
   return "other";
 }
 
-const MIME = { mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", mov: "video/quicktime", html: "text/html", htm: "text/html", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml" };
+// pages say UTF-8 here: a page made as a fragment (like the 3D viewer) has no charset of its own
+const MIME = { mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", mov: "video/quicktime", html: "text/html;charset=utf-8", htm: "text/html;charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml" };
 export const mimeType = path => MIME[path.split(".").pop().toLowerCase()] || "application/octet-stream";
 
 /** A playable address for a file of the repository (a blob URL: revoke it when done). */
