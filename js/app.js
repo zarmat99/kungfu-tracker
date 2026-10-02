@@ -7,6 +7,8 @@ import { renderCompetitionForm } from "./views/competition-form.js";
 import { renderProgress } from "./views/progress.js";
 import { renderGoalForm } from "./views/goal-form.js";
 import { renderSettings } from "./views/settings.js";
+import { renderKnowledge } from "./views/knowledge.js";
+import { loadCachedNotes, loadNotes } from "./notes.js";
 import { icon } from "./icons.js";
 import { toast, closeSheet, hideTip } from "./ui.js";
 import { weekStreak } from "./stats.js";
@@ -18,6 +20,7 @@ const VIEWS = {
   "competition-edit": renderCompetitionForm,
   progress: renderProgress,
   "goal-edit": renderGoalForm,
+  knowledge: renderKnowledge,
   settings: renderSettings,
 };
 /** The dock tab that stays lit on pages without their own tab. */
@@ -41,6 +44,7 @@ const DOCK = {
   progress: ["chart", "Grafici"],
   log: ["plus", "Registra"],
   competitions: ["trophy", "Gare"],
+  knowledge: ["book", "Conoscenza"],
 };
 
 document.querySelector("[data-settings]").innerHTML = icon("sliders");
@@ -96,9 +100,14 @@ window.addEventListener("hashchange", render);
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) hiddenAt = Date.now();
-  else if (isConnected() && Date.now() - hiddenAt > 5 * 60 * 1000 && getState().status !== "saving") load().catch(() => {});
+  else if (isConnected() && Date.now() - hiddenAt > 5 * 60 * 1000 && getState().status !== "saving") {
+    load().catch(() => {});
+    loadNotes().catch(() => {});
+  }
 });
 
 loadCached();
-if (isConnected()) load().catch(err => toast(errorMessage(err), "error"));
+loadCachedNotes();
+// the notes come after the data, so the calendar is never kept waiting
+if (isConnected()) load().catch(err => toast(errorMessage(err), "error")).finally(() => loadNotes().catch(() => {}));
 render();

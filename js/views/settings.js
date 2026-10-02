@@ -1,4 +1,5 @@
 import { getConfig, setConfig, isConnected, load, disconnect, getState, errorMessage, DEV, DEFAULTS } from "../store.js";
+import { getNotes, loadNotes, forgetNotes } from "../notes.js";
 import { icon } from "../icons.js";
 import { toast, armConfirm } from "../ui.js";
 import { navigate } from "../router.js";
@@ -33,11 +34,19 @@ export function renderSettings(root) {
       <div class="status-row"><span>File</span><b>${esc(cfg.path)}</b></div>
       <div class="status-row"><span>Ultima sincronizzazione</span><b>${fmtRelative(syncedAt)}</b></div>
       <div class="status-row"><span>Dati</span><b>${data ? `${data.sessions.length} sessioni · ${data.competitions.length} gare${data.goals.length ? ` · ${plural(data.goals.length, "traguardo", "traguardi")}` : ""}` : "—"}</b></div>
+      <div class="status-row"><span>Conoscenza</span><b>${notesLine()}</b></div>
       <div class="status-actions">
         <button class="btn btn-ghost" data-reload>${icon("refresh")} Ricarica</button>
         <button class="btn btn-danger" data-disconnect>${icon("logout")} Scollega</button>
       </div>
     </div>`;
+  }
+
+  function notesLine() {
+    const { notes } = getNotes();
+    if (!notes) return "—";
+    const count = [...notes.keys()].filter(path => path !== "README.md").length;
+    return plural(count, "nota", "note");
   }
 
   function tokenForm(cfg, connected) {
@@ -89,6 +98,7 @@ export function renderSettings(root) {
     try {
       await load();
       toast(`Collegato: ${getState().data.sessions.length} sessioni`);
+      loadNotes().catch(() => {});
       navigate("#/calendar");
     } catch (err) {
       setConfig(previous);
@@ -101,8 +111,8 @@ export function renderSettings(root) {
     const reload = e.target.closest("[data-reload]");
     if (reload) {
       reload.disabled = true;
-      load()
-        .then(() => { toast("Dati aggiornati"); draw(); })
+      Promise.all([load(), loadNotes()])
+        .then(() => { toast("Dati e note aggiornati"); draw(); })
         .catch(err => { toast(errorMessage(err), "error"); reload.disabled = false; });
       return;
     }
@@ -110,6 +120,7 @@ export function renderSettings(root) {
     if (out) {
       armConfirm(out, "Conferma", () => {
         disconnect();
+        forgetNotes();
         toast("Scollegato da questo browser");
         navigate("#/settings", { replace: true });
       });

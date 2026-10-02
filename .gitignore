@@ -1,2 +1,3 @@
-# local copy of the private data, used only for development (?dev on localhost)
+# local copy of the private data and notes, used only for development (?dev on localhost)
 dev-data.json
+dev-notes.json

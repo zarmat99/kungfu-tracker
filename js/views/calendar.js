@@ -6,6 +6,7 @@ import { openSheet, closeSheet, sheetBody, toast, armConfirm, typeBar } from "..
 import { groupByDate, summarize } from "../stats.js";
 import { navigate } from "../router.js";
 import { hasResults } from "../competition-stats.js";
+import { getNotes, subscribeNotes, notesOn, noteHref } from "../notes.js";
 
 /** "In programma", "Risultati da inserire", or nothing once the results are in. */
 function compStatus(c, now) {
@@ -150,7 +151,26 @@ export function renderCalendar(root, params) {
         ${ss.map((s, i) => sessionCard(s, i + cs.length)).join("")}
         ${ss.length || cs.length ? "" : `<div class="empty"><span class="cn" aria-hidden="true">空</span>Nessuna sessione in questo giorno</div>`}
       </div>
+      ${ss.length || cs.length ? notesBlock(ds) : ""}
       <button class="btn btn-primary" data-add="${ds}">${icon("plus")} Aggiungi sessione</button>`;
+  }
+
+  /** The sections of the notes that mention this day, from the lessons written into them. */
+  function notesBlock(ds) {
+    const { notes } = getNotes();
+    const refs = notes ? notesOn(ds).filter(r => notes.has(r.path)) : [];
+    if (!refs.length) return "";
+    return `<div class="sheet-block day-notes">
+      <p class="field-label">Nelle note</p>
+      <ul>${refs.map(r => {
+        const note = notes.get(r.path);
+        return `<li><a href="${noteHref(r.path, r.slug)}">
+          ${icon("book")}
+          <span><b>${esc(note.short || note.title)}</b>${r.heading ? `<small>${esc(r.heading)}</small>` : ""}</span>
+          ${icon("right", "g-chev")}
+        </a></li>`;
+      }).join("")}</ul>
+    </div>`;
   }
 
   function sessionCard(s, i) {
@@ -267,12 +287,19 @@ export function renderCalendar(root, params) {
     draw();
     refreshSheet();
   });
+  let drawnNotes = getNotes().notes;
+  const unsubscribeNotes = subscribeNotes(state => {
+    if (state.notes === drawnNotes) return;
+    drawnNotes = state.notes;
+    refreshSheet();
+  });
 
   draw();
   if (params.get("open") && flashDay && getState().data) openDay(flashDay);
 
   return () => {
     unsubscribe();
+    unsubscribeNotes();
     document.removeEventListener("keydown", onKey);
     closeSheet(true);
   };

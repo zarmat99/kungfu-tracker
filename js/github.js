@@ -1,4 +1,4 @@
-// Minimal client for the GitHub contents API: read and write one JSON file in a repository.
+// Minimal client for the GitHub API: read and write one JSON file in a repository, and read the notes.
 const API = "https://api.github.com";
 
 export class GitHubError extends Error {
@@ -49,6 +49,26 @@ export async function readFile(cfg) {
     content = (await request(cfg, "GET", `/repos/${cfg.repo}/git/blobs/${file.sha}`)).content;
   }
   return { text: fromBase64(content), sha: file.sha };
+}
+
+/** Every file of the branch (path, blob sha, size), from one tree request. */
+export async function readTree(cfg) {
+  const tree = await request(cfg, "GET", `/repos/${cfg.repo}/git/trees/${encodeURIComponent(cfg.branch)}?recursive=1`);
+  return tree.tree.filter(entry => entry.type === "blob");
+}
+
+/** A text file by its blob sha. */
+export async function readBlob(cfg, sha) {
+  return fromBase64((await request(cfg, "GET", `/repos/${cfg.repo}/git/blobs/${sha}`)).content);
+}
+
+/** Any file by its blob sha, as raw bytes: for videos and pages. */
+export async function readBlobRaw(cfg, sha, type) {
+  const res = await fetch(`${API}/repos/${cfg.repo}/git/blobs/${sha}`, {
+    headers: { Accept: "application/vnd.github.raw+json", Authorization: `Bearer ${cfg.token}` },
+  });
+  if (!res.ok) throw new GitHubError(res.status, res.statusText);
+  return new Blob([await res.arrayBuffer()], { type });
 }
 
 export async function writeFile(cfg, text, sha, message) {

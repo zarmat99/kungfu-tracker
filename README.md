@@ -10,12 +10,14 @@ This repository holds only the code. The data lives in a private repository: the
 - **Calendar:** every session and event by month, with hours by type.
 - **Competitions:** the next competition with a countdown and preparation notes, palmarès, every competition with its matches round by round, the record against each opponent, and how each round number tends to go.
 - **Progress:** the current season at a glance, the goals ahead (competitions to come and personal milestones such as a grade exam) with a countdown, attendance week by week in every season with the streaks, and hours per season by type. Each chart has its numbers in a table too.
+- **Knowledge:** the Markdown notes of the private repository, read only, indexed like its README and searchable. A lesson date written in a note opens that day in the calendar, and a day in the calendar lists the notes that mention it. Videos and pages kept with the notes open on request.
 
 ## How it works
 
 - Static site with no build step: plain HTML, CSS and JavaScript modules.
 - The data is one JSON file in the private repository, and every save is a commit.
 - If two devices save at the same time, the page reloads the file and applies the change again.
+- The notes come from the same repository: one request lists them, and only the notes that changed since the last visit are downloaded again.
 
 ## Local development
 
@@ -25,4 +27,4 @@ Serve the folder and open it with `?dev`:
 python -m http.server 8765
 ```
 
-Then open http://localhost:8765/?dev. In dev mode the page reads `dev-data.json` (a local copy of the data, ignored by git) and keeps every save in the browser.
+Then open http://localhost:8765/?dev. In dev mode the page reads `dev-data.json` and `dev-notes.json` (local copies of the data and of the notes, ignored by git) and keeps every save in the browser. The videos and pages linked from the notes come from a second server, started in the notes repository with `python -m http.server 8766`.
