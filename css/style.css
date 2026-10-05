@@ -88,13 +88,30 @@ a { color: inherit; }
 
 .top-actions { display: flex; align-items: center; gap: 10px; }
 .icon-btn {
-  width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; flex: none;
+  position: relative; width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; flex: none;
   background: var(--card-flat); border: 1px solid var(--border); color: var(--text-2);
   cursor: pointer; text-decoration: none; transition: transform .15s, background .2s, color .2s;
 }
 .icon-btn:hover { color: var(--text); background: rgba(255, 255, 255, .08); }
 .icon-btn:active { transform: scale(.92); }
+/* the token is about to expire */
+.icon-btn[data-alert]::after {
+  content: ""; position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--c-gold); box-shadow: 0 0 0 2px var(--bg), 0 0 10px rgba(250, 204, 21, .7);
+}
 .ico { width: 20px; height: 20px; flex: none; }
+
+.token-alert {
+  display: flex; align-items: center; gap: 10px; margin: 2px 0 14px; padding: 12px 14px; border-radius: 16px;
+  background: rgba(250, 204, 21, .08); border: 1px solid rgba(250, 204, 21, .25); color: #fde68a;
+  font-size: 13.5px; line-height: 1.35; text-decoration: none;
+}
+.token-alert > .ico { width: 18px; height: 18px; }
+.token-alert span { flex: 1; min-width: 0; }
+.token-alert b { display: inline-flex; align-items: center; gap: 2px; flex: none; font-weight: 700; color: #fef3c7; white-space: nowrap; }
+.token-alert b .ico { width: 16px; height: 16px; }
+.token-alert.expired { background: rgba(244, 63, 94, .08); border-color: rgba(244, 63, 94, .3); color: #fecdd3; }
+.token-alert.expired b { color: #ffe4e6; }
 
 .streak {
   display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 11px 0 9px; border-radius: 999px;
@@ -389,13 +406,30 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.5; }
 .hero .seal span { font-size: 36px; }
 .hero h1 { margin: 0; font-size: 34px; letter-spacing: -.045em; line-height: 1.05; }
 .hero p { margin: 12px auto 0; max-width: 34ch; color: var(--text-2); }
-.settings-stack { display: grid; gap: 14px; margin-top: 26px; }
+.settings-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 26px; }
 .token-form { display: grid; gap: 14px; padding: 18px; }
 .token-form label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
 .token-form details { font-size: 13px; color: var(--text-2); }
 .token-form summary { cursor: pointer; font-weight: 600; padding: 4px 2px; }
 .token-form details[open] summary { margin-bottom: 10px; }
 .token-form .row { display: grid; gap: 10px; }
+/* the token's expiry: in the status card for the token in use, in the form for a new one */
+.expiry-pick { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.expiry-pick .date-pick { display: inline-flex; flex: none; }
+.expiry-text { min-width: 0; }
+.expiry-text span { display: block; font-size: 14px; color: var(--text-3); }
+.expiry-text b { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.expiry-text b.none { font-weight: 500; color: var(--text-3); }
+.expiry-text b.soon { color: #fde68a; }
+.expiry-text b.expired { color: #fecdd3; }
+.expiry-text small { display: block; margin-top: 4px; font-size: 12.5px; line-height: 1.4; color: var(--text-3); }
+.expiry-field { display: grid; gap: 8px; }
+.expiry-title { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.expiry-field > small { font-size: 12.5px; line-height: 1.4; color: var(--text-3); }
+.expiry-pick.new { padding: 10px 10px 10px 16px; border-radius: 18px; border: 1px solid var(--border); background: rgba(255, 255, 255, .035); }
+.expiry-pick.new b { font-size: 15px; }
+.form-hint { margin: -2px 2px 0; font-size: 12.5px; line-height: 1.45; color: var(--text-3); }
+.form-hint a { color: var(--text-2); font-weight: 600; text-underline-offset: 3px; }
 .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; gap: 10px; }
 .steps li { counter-increment: step; position: relative; padding: 14px 14px 14px 58px; border-radius: 18px; background: var(--card-flat); border: 1px solid var(--border); font-size: 14px; color: var(--text-2); }
 .steps li::before { content: counter(step); position: absolute; left: 14px; top: 12px; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--seal-grad); color: #fff; font-weight: 700; font-size: 14px; }
@@ -406,7 +440,7 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.5; }
 .status-row span { color: var(--text-3); }
 .status-row b { font-weight: 600; text-align: right; overflow-wrap: anywhere; }
 .status-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.status-actions .btn { min-height: 48px; font-size: 14px; width: 100%; }
+.status-actions .btn { min-height: 48px; padding: 0 12px; gap: 8px; font-size: 14px; width: 100%; }
 .dev-banner { padding: 12px 14px; border-radius: 16px; background: rgba(56, 189, 248, .08); border: 1px solid rgba(56, 189, 248, .3); color: #bae6fd; font-size: 13.5px; }
 .notice { padding: 16px; border-radius: 18px; background: rgba(244, 63, 94, .08); border: 1px solid rgba(244, 63, 94, .3); color: #fecdd3; font-size: 14px; }
 .notice .btn { margin-top: 12px; min-height: 44px; }

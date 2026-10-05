@@ -18,6 +18,7 @@ This repository holds only the code. The data lives in a private repository: the
 - The data is one JSON file in the private repository, and every save is a commit.
 - If two devices save at the same time, the page reloads the file and applies the change again.
 - The notes come from the same repository: one request lists them, and only the notes that changed since the last visit are downloaded again.
+- A page cannot read the token's expiry from GitHub, so its date is typed in the settings. A week before that date every page shows a reminder to renew the token.
 
 ## Local development
 

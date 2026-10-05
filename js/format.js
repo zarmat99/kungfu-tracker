@@ -70,6 +70,12 @@ export function fmtShortDate(s, withYear = true) {
   return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ""}`;
 }
 
+/** "il 16 mag", "l'8 mag", "l'11 mag": the short date with its article */
+export function theDay(s) {
+  const day = parseISO(s).getDate();
+  return `${day === 8 || day === 11 ? "l'" : "il "}${fmtShortDate(s, false)}`;
+}
+
 /** "8 gen–4 lug 2026", or "3 set 2025–4 lug 2026" across two years; never split across lines */
 export function fmtSpan(from, to) {
   if (from === to) return fmtShortDate(to);

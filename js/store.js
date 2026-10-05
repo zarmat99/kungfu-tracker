@@ -1,12 +1,16 @@
 // App state: the tracker data, its GitHub sha, and the connection settings.
 import * as github from "./github.js";
 import { byDate } from "./stats.js";
+import { today, daysBetween } from "./format.js";
 
 const CONFIG_KEY = "kft.config";
 const CACHE_KEY = "kft.cache";
 const DEV_KEY = "kft.dev";
 
-export const DEFAULTS = { token: "", repo: "zarmat99/kungfu-space", path: "dati/tracker.json", branch: "main" };
+export const DEFAULTS = { token: "", repo: "zarmat99/kungfu-space", path: "dati/tracker.json", branch: "main", tokenExpires: "" };
+
+/** The reminder to renew the GitHub token starts this many days before it expires. */
+export const TOKEN_REMIND_DAYS = 7;
 
 /** Local development: `?dev` on localhost reads dev-data.json and keeps writes in this browser. */
 export const DEV = ["localhost", "127.0.0.1"].includes(location.hostname) && new URLSearchParams(location.search).has("dev");
@@ -46,12 +50,22 @@ export function getConfig() {
 }
 export function setConfig(cfg) {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+  dispatchEvent(new Event("kft:config"));
 }
 export const isConnected = () => DEV || Boolean(getConfig().token);
+
+/**
+ * Days left before the GitHub token expires: 0 on its last day, negative once expired, null when the date is unknown.
+ * A page cannot read the expiry from GitHub (the API does not expose that header), so it is the date typed in the settings.
+ */
+export function tokenDaysLeft(cfg = getConfig()) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(cfg.tokenExpires || "") ? daysBetween(today(), cfg.tokenExpires) : null;
+}
 
 export function disconnect() {
   try { [CONFIG_KEY, CACHE_KEY, DEV_KEY].forEach(k => localStorage.removeItem(k)); } catch { /* storage unavailable */ }
   set({ data: null, sha: null, status: "idle", error: null, syncedAt: null });
+  dispatchEvent(new Event("kft:config"));
 }
 
 function normalize(data) {
@@ -127,7 +141,7 @@ export async function commit(mutate, message) {
 export function errorMessage(error) {
   if (!navigator.onLine || error instanceof TypeError) return "Sei offline: riprova quando c'è rete";
   switch (error?.status) {
-    case 401: return "Token non valido o scaduto";
+    case 401: return tokenDaysLeft() < 0 ? "Il token è scaduto: rinnovalo in Impostazioni" : "Token non valido o scaduto";
     case 403: return "Il token non ha il permesso di scrivere (Contents: Read and write)";
     case 404: return "Non trovo il file: controlla che il token veda il repository";
     case 409: case 422: return "Qualcun altro ha salvato nello stesso momento: riprova";

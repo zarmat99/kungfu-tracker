@@ -1,4 +1,4 @@
-import { loadCached, load, isConnected, subscribe, getState, errorMessage } from "./store.js";
+import { loadCached, load, isConnected, subscribe, getState, errorMessage, getConfig, tokenDaysLeft, TOKEN_REMIND_DAYS } from "./store.js";
 import { parseRoute, navigate } from "./router.js";
 import { renderCalendar } from "./views/calendar.js";
 import { renderLog } from "./views/log.js";
@@ -12,6 +12,7 @@ import { loadCachedNotes, loadNotes } from "./notes.js";
 import { icon } from "./icons.js";
 import { toast, closeSheet, hideTip } from "./ui.js";
 import { weekStreak } from "./stats.js";
+import { theDay } from "./format.js";
 
 const VIEWS = {
   calendar: renderCalendar,
@@ -47,11 +48,19 @@ const DOCK = {
   knowledge: ["book", "Conoscenza"],
 };
 
-document.querySelector("[data-settings]").innerHTML = icon("sliders");
+const settingsLink = document.querySelector("[data-settings]");
+settingsLink.innerHTML = icon("sliders");
 for (const [tab, [glyph, label]] of Object.entries(DOCK)) {
   const link = dock.querySelector(`[data-tab="${tab}"]`);
   if (link) link.innerHTML = `${icon(glyph)}<span>${label}</span>`;
 }
+
+// the reminder to renew the GitHub token, above every page but the settings
+const tokenAlert = document.createElement("a");
+tokenAlert.className = "token-alert";
+tokenAlert.href = "#/settings";
+tokenAlert.hidden = true;
+main.before(tokenAlert);
 
 function render() {
   const { name, params } = parseRoute();
@@ -89,9 +98,29 @@ function updateChrome(state) {
   streak.hidden = !isConnected() || weeks < 2;
   streak.innerHTML = `${icon("flame")}${weeks}`;
   streak.title = `${weeks} settimane di fila con almeno un allenamento`;
+
+  updateTokenAlert();
+}
+
+function updateTokenAlert() {
+  const { tokenExpires } = getConfig();
+  const days = isConnected() ? tokenDaysLeft() : null;
+  const due = days !== null && days <= TOKEN_REMIND_DAYS;
+  settingsLink.toggleAttribute("data-alert", due);
+  settingsLink.setAttribute("aria-label", due ? "Impostazioni: rinnova il token" : "Impostazioni");
+  tokenAlert.hidden = !due || parseRoute().name === "settings";
+  if (!due) return;
+  tokenAlert.classList.toggle("expired", days < 0);
+  tokenAlert.innerHTML = `${icon("key")}<span></span><b>Rinnova${icon("right")}</b>`;
+  tokenAlert.querySelector("span").textContent =
+    days < 0 ? `Il token di GitHub è scaduto ${theDay(tokenExpires)}: senza un token nuovo la pagina non salva.`
+    : days === 0 ? "Il token di GitHub scade oggi."
+    : days === 1 ? "Il token di GitHub scade domani."
+    : `Il token di GitHub scade tra ${days} giorni, ${theDay(tokenExpires)}.`;
 }
 
 subscribe(updateChrome);
+addEventListener("kft:config", updateTokenAlert);
 window.addEventListener("online", () => updateChrome(getState()));
 window.addEventListener("offline", () => updateChrome(getState()));
 window.addEventListener("hashchange", render);
