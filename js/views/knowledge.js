@@ -1,6 +1,6 @@
 import { getState as getData, subscribe as subscribeData, errorMessage } from "../store.js";
 import {
-  getNotes, subscribeNotes, loadNotes, searchNotes, termsIn, hitRanges, resolvePath, isFolder,
+  getNotes, subscribeNotes, loadNotes, searchNotes, termsIn, hitRanges, resolvePath, isFolder, isHidden,
   noteHref, dirHref, fileHref, githubUrl, fileKind, fileUrl,
 } from "../notes.js";
 import { render } from "../markdown.js";
@@ -175,10 +175,14 @@ export function renderKnowledge(root, params) {
 
   // ---------- a note ----------
 
-  /** Links between notes stay in the app; videos and pages open in the file view; the rest goes to the web. */
+  /**
+   * Links between notes stay in the app; videos and pages open in the file view; the rest goes to the web.
+   * A link into a hidden folder (practice, competitions) stays as plain text.
+   */
   function linkFor(from, href) {
     if (/^(https?:|mailto:)/i.test(href)) return { href, external: true };
     const { path, hash } = resolvePath(from, href);
+    if (isHidden(path)) return null;
     if (/\.md$/i.test(path)) return { href: noteHref(path, hash) };
     if (isFolder(path)) return { href: dirHref(path.endsWith("/") ? path : `${path}/`), cls: "md-dir", before: icon("folder", "md-ico") };
     const kind = fileKind(path);

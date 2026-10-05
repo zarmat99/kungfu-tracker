@@ -25,6 +25,10 @@ const githubTransport = {
 };
 const transport = DEV ? devTransport : githubTransport;
 
+/** Folders this section leaves out: practice and competitions have their own sections of the site. */
+const HIDDEN = ["pratica/", "gare/"];
+export const isHidden = path => HIDDEN.some(dir => path.startsWith(dir));
+
 let state = { notes: null, files: [], index: [], order: null, dates: null, status: "idle", error: null, syncedAt: null };
 const listeners = new Set();
 
@@ -77,7 +81,7 @@ export function fileKind(path) {
   return "other";
 }
 
-// pages say UTF-8 here: a page made as a fragment (like the 3D viewer) has no charset of its own
+// pages say UTF-8 here: a page made as a fragment has no charset of its own
 const MIME = { mp4: "video/mp4", m4v: "video/mp4", webm: "video/webm", mov: "video/quicktime", html: "text/html;charset=utf-8", htm: "text/html;charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml" };
 export const mimeType = path => MIME[path.split(".").pop().toLowerCase()] || "application/octet-stream";
 
@@ -148,6 +152,7 @@ function dateIndex(notes) {
 }
 
 function build(tree, texts) {
+  tree = tree.filter(f => !isHidden(f.path)); // also for a cache saved before a folder was hidden
   const notes = new Map();
   for (const f of tree) {
     if (!/\.md$/i.test(f.path) || typeof texts[f.sha] !== "string") continue;
@@ -225,7 +230,7 @@ export function loadNotes() {
     set({ status: "loading", error: null });
     try {
       const cfg = getConfig();
-      const tree = (await transport.readTree(cfg)).map(({ path, sha, size }) => ({ path, sha, size }));
+      const tree = (await transport.readTree(cfg)).map(({ path, sha, size }) => ({ path, sha, size })).filter(f => !isHidden(f.path));
       const key = keyOf(tree);
       if (key === treeKey && state.notes) {
         set({ status: "ready", syncedAt: Date.now() });
