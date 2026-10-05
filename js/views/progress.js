@@ -207,17 +207,21 @@ export function renderProgress(root, params) {
     const months = cols.map(monthMinutes);
     const thisMonth = (Number(now.slice(5, 7)) + 3) % 12;
     const cell = (s, j, k) => (s.current && k > thisMonth ? "" : months[j][k] ? hours(months[j][k]) : "–");
+    // the last column adds up every season: each month, then the totals
+    const monthTotal = k => months.reduce((sum, m) => sum + (m[k] || 0), 0);
+    const total = cols.reduce((sum, s) => sum + s.minutes, 0);
+    const weeks = cols.reduce((sum, s) => sum + s.weeks.size, 0);
     return `<details class="numbers">
       <summary>${icon("down", "chev")}Vedi i numeri</summary>
-      <table>
+      <div class="table-scroll"><table>
         <caption>Ore per mese</caption>
-        <thead><tr><td></td>${cols.map(s => `<th scope="col">${s.label.slice(2)}</th>`).join("")}</tr></thead>
-        <tbody>${SEASON_MONTHS.map((m, k) => `<tr><th scope="row">${MONTHS_SHORT[m]}</th>${cols.map((s, j) => `<td>${cell(s, j, k)}</td>`).join("")}</tr>`).join("")}</tbody>
+        <thead><tr><td></td>${cols.map(s => `<th scope="col">${s.label.slice(2)}</th>`).join("")}<th scope="col">Tot.</th></tr></thead>
+        <tbody>${SEASON_MONTHS.map((m, k) => `<tr><th scope="row">${MONTHS_SHORT[m]}</th>${cols.map((s, j) => `<td>${cell(s, j, k)}</td>`).join("")}<td><b>${monthTotal(k) ? hours(monthTotal(k)) : "–"}</b></td></tr>`).join("")}</tbody>
         <tfoot>
-          <tr><th scope="row">Totale</th>${cols.map(s => `<td>${hours(s.minutes)}</td>`).join("")}</tr>
-          <tr><th scope="row">Settimane</th>${cols.map(s => `<td>${s.weeks.size}</td>`).join("")}</tr>
+          <tr><th scope="row">Totale</th>${cols.map(s => `<td>${hours(s.minutes)}</td>`).join("")}<td>${hours(total)}</td></tr>
+          <tr><th scope="row">Settimane</th>${cols.map(s => `<td>${s.weeks.size}</td>`).join("")}<td>${weeks}</td></tr>
         </tfoot>
-      </table>
+      </table></div>
     </details>`;
   }
 

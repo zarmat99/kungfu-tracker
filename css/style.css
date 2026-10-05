@@ -790,6 +790,12 @@ textarea.note-input { min-height: 0; resize: none; overflow: hidden; }
 .numbers tbody th, .numbers tfoot th { text-align: left; font-weight: 600; color: var(--text-2); }
 .numbers tfoot td { font-weight: 700; }
 .numbers tfoot tr:last-child > * { border-bottom: 0; }
+/* a wide table scrolls inside its card instead of pushing out of it */
+.numbers .table-scroll { overflow-x: auto; }
+@media (max-width: 380px) {
+  .numbers table { font-size: 12.5px; }
+  .numbers th, .numbers td { padding-inline: 2px; }
+}
 .th-type::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 2px; background: var(--c); vertical-align: 2px; }
 .th-type span[aria-hidden] { font-family: var(--brush); font-size: 15px; font-weight: 400; color: var(--text); }
 
