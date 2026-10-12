@@ -1,5 +1,5 @@
 // A small Markdown renderer for the notes: the subset they use (headings, paragraphs, nested lists,
-// tables, code blocks, quotes, links, bold, italics, inline code). Everything else is shown as text.
+// tables, code blocks, quotes, links, images, bold, italics, inline code). Everything else is shown as text.
 import { esc, pad } from "./format.js";
 
 /** GitHub's heading ids: lower case, punctuation and symbols dropped, spaces to dashes; repeats get -1, -2. */
@@ -13,11 +13,11 @@ export function slugify(text, seen) {
   return slug;
 }
 
-/** Inline Markdown as plain text: links keep their text, formatting marks go. */
+/** Inline Markdown as plain text: links and images keep their text, formatting marks go. */
 export function plain(src) {
   return src
     .replace(/`([^`]*)`/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*\s][^*]*)\*/g, "$1");
 }
@@ -62,6 +62,10 @@ const HEADING = /^(#{1,6})\s+(.+?)\s*#*\s*$/;
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 const TABLE_SEP = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 const HR = /^\s*([-*_])(\s*\1){2,}\s*$/;
+
+/** One image: ![caption](path "optional title"). A paragraph made only of images is a figure or a gallery. */
+const IMAGE = /!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g;
+const ONLY_IMAGES = /^(\s*!\[[^\]]*\]\(\s*[^)\s]+(?:\s+"[^"]*")?\s*\))+\s*$/;
 
 const isTable = (lines, i) => lines[i].trimStart().startsWith("|") && i + 1 < lines.length && TABLE_SEP.test(lines[i + 1]);
 const startsBlock = (lines, i) =>
@@ -160,7 +164,12 @@ export function parse(md, seen = new Map()) {
     const para = [line.trim()];
     i++;
     while (i < lines.length && lines[i].trim() && !startsBlock(lines, i)) para.push(lines[i++].trim());
-    blocks.push({ type: "p", src: para.join("\n") });
+    const src = para.join("\n");
+    if (ONLY_IMAGES.test(src.replace(/\n/g, " "))) {
+      blocks.push({ type: "images", items: [...src.matchAll(IMAGE)].map(m => ({ alt: m[1].trim(), href: m[2] })) });
+      continue;
+    }
+    blocks.push({ type: "p", src });
   }
   return blocks;
 }
@@ -174,6 +183,8 @@ export function blockTexts(block) {
     case "table": return block.rows.map(r => r.src);
     case "quote": return block.blocks.flatMap(blockTexts);
     case "list": return block.items.flatMap(it => [it.src, ...it.children.flatMap(blockTexts)]);
+    // the captions, each once: a sequence of photos often shares one
+    case "images": return [[...new Set(block.items.map(it => it.alt).filter(Boolean))].join(" · ")].filter(Boolean);
     default: return [];
   }
 }
@@ -236,8 +247,10 @@ function inline(src, from, to, ctx, inLink) {
         i = start = j + 1;
         continue;
       }
-    } else if (c === "[" && !inLink) {
-      const m = matchLink(src, i, to);
+    } else if ((c === "[" || (c === "!" && src[i + 1] === "[")) && !inLink) {
+      // an image inside a line of text becomes a link to the picture, with its caption as the text
+      const bang = c === "!";
+      const m = matchLink(src, bang ? i + 1 : i, to);
       if (m) {
         flush(i);
         const label = inline(src, m.from, m.to, ctx, true);
@@ -289,6 +302,27 @@ export function renderInline(src, ctx = {}) {
 
 const SOURCES = /^fonti?$/i;
 
+/**
+ * A figure, or a gallery that scrolls sideways when the paragraph has more images. `ctx.image(href)`
+ * gives { path } for a file of the repository (loaded later by the page) or { src } for the web.
+ * A caption shared by every photo of a sequence is written once, under the strip.
+ */
+function images(block, ctx, g) {
+  const shown = block.items.map(it => ({ ...it, target: ctx.image ? ctx.image(it.href) : SAFE_URL.test(it.href) ? { src: it.href } : null })).filter(it => it.target);
+  if (!shown.length) return "";
+  const shared = shown.every(it => it.alt === shown[0].alt) ? shown[0].alt : "";
+  const shot = (it, i) => {
+    const source = it.target.path ? `data-path="${esc(it.target.path)}"` : `src="${esc(it.target.src)}"`;
+    return `<figure class="md-photo"><button class="md-shot" type="button" data-i="${i}" aria-label="${esc(`Apri la foto${it.alt ? `: ${it.alt}` : ""}${shown.length > 1 ? `, ${i + 1} di ${shown.length}` : ""}`)}">
+      <img ${source} alt="${esc(it.alt)}" decoding="async"></button>${!shared && it.alt ? `<figcaption>${esc(it.alt)}</figcaption>` : ""}</figure>`;
+  };
+  if (shown.length === 1) return `<div class="md-figure" data-block="${g}">${shot(shown[0], 0)}${shared ? `<p class="md-cap">${esc(shared)}</p>` : ""}</div>`;
+  return `<div class="md-gallery" data-block="${g}">
+    <div class="md-strip" tabindex="0" role="group" aria-label="${esc(`${shared || "Foto"}: ${shown.length} foto`)}">${shown.map(shot).join("")}</div>
+    <p class="md-cap">${shared ? `${esc(shared)} · ` : ""}<span>${shown.length} foto</span></p>
+  </div>`;
+}
+
 function list(block, ctx) {
   const tag = block.ordered ? "ol" : "ul";
   const start = block.ordered && block.start !== 1 ? ` start="${block.start}"` : "";
@@ -318,6 +352,8 @@ function table(block, ctx) {
  */
 export function render(blocks, ctx = {}) {
   let html = "", section = "";
+  // galleries are numbered across the whole note, quotes included
+  const galleries = ctx.galleries ||= { n: 0 };
   for (const b of blocks) {
     if (b.type === "heading" && b.level <= 2) section = b.text;
     const c = SOURCES.test(section) ? { ...ctx, dateHref: null } : ctx;
@@ -329,6 +365,7 @@ export function render(blocks, ctx = {}) {
       case "quote": html += `<blockquote>${render(b.blocks, c)}</blockquote>`; break;
       case "list": html += list(b, c); break;
       case "table": html += table(b, c); break;
+      case "images": html += images(b, c, galleries.n++); break;
     }
   }
   return html;

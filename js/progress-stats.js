@@ -80,6 +80,53 @@ export function monthMinutes(season) {
   return months;
 }
 
+/** Average days in a month, to turn a span of days into months. */
+const MONTH_DAYS = 365.25 / 12;
+
+/**
+ * The averages of a season over the days it covers: from 1 September (or the first session) to
+ * 31 August (or today). Breaks count as time too; `perActiveWeek` leaves out the weeks without sessions.
+ */
+export function seasonAverages(season, now = today()) {
+  const start = season.lateStart || season.from;
+  const end = season.to < now ? season.to : now;
+  const days = Math.max(1, daysBetween(start, end) + 1);
+  const hours = season.minutes / 60;
+  return {
+    days,
+    perWeek: hours / (days / 7),
+    perMonth: hours / (days / MONTH_DAYS),
+    sessionsPerWeek: season.count / (days / 7),
+    sessionMinutes: season.count ? season.minutes / season.count : 0,
+    perActiveWeek: season.weeks.size ? hours / season.weeks.size : 0,
+  };
+}
+
+/**
+ * Hours in each calendar month, September first, averaged over the months fully inside the record:
+ * from the first whole month after the first session to the month before this one.
+ * Each entry: { avg (minutes), months: [{ ym, minutes }] }. Also the current month so far.
+ */
+export function monthAverages(sessions, now = today()) {
+  const done = sessions.filter(s => s.date <= now);
+  const slots = SEASON_MONTHS.map(() => ({ avg: 0, months: [] }));
+  if (!done.length) return { slots, current: null };
+  const byMonth = new Map();
+  for (const s of done) byMonth.set(s.date.slice(0, 7), (byMonth.get(s.date.slice(0, 7)) || 0) + s.duration);
+  const first = done.reduce((min, s) => (s.date < min ? s.date : min), done[0].date);
+  let [y, m] = first.split("-").map(Number);
+  if (!first.endsWith("-01")) [y, m] = m === 12 ? [y + 1, 1] : [y, m + 1];
+  const thisMonth = now.slice(0, 7);
+  for (let ym = `${y}-${String(m).padStart(2, "0")}`; ym < thisMonth;) {
+    slots[(m + 3) % 12].months.push({ ym, minutes: byMonth.get(ym) || 0 });
+    [y, m] = m === 12 ? [y + 1, 1] : [y, m + 1];
+    ym = `${y}-${String(m).padStart(2, "0")}`;
+  }
+  for (const slot of slots) slot.avg = slot.months.length ? slot.months.reduce((sum, x) => sum + x.minutes, 0) / slot.months.length : 0;
+  const k = (Number(now.slice(5, 7)) + 3) % 12;
+  return { slots, current: { index: k, minutes: byMonth.get(thisMonth) || 0, day: Number(now.slice(8, 10)) } };
+}
+
 /** Runs of consecutive weeks with at least one session, oldest first, with their first and last session. */
 export function streakRuns(sessions) {
   const runs = [];

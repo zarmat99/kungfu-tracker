@@ -1,9 +1,10 @@
 import { getState as getData, subscribe as subscribeData, errorMessage } from "../store.js";
 import {
   getNotes, subscribeNotes, loadNotes, searchNotes, termsIn, hitRanges, resolvePath, isFolder, isHidden,
-  noteHref, dirHref, fileHref, githubUrl, fileKind, fileUrl,
+  noteHref, dirHref, fileHref, githubUrl, fileKind, fileUrl, imageUrl,
 } from "../notes.js";
 import { render } from "../markdown.js";
+import { openLightbox, closeLightbox } from "../lightbox.js";
 import { icon } from "../icons.js";
 import { esc, fmtNum, plural } from "../format.js";
 import { toast } from "../ui.js";
@@ -14,7 +15,7 @@ const GLYPHS = { scuola: "校", pratica: "练", conoscenza: "知", gare: "赛" }
 const KINDS = {
   video: { label: "Video", icon: "play", action: "Guarda il video" },
   page: { label: "Pagina", icon: "box", action: "Apri la pagina" },
-  image: { label: "Immagine", icon: "file", action: "Mostra l'immagine" },
+  image: { label: "Immagine", icon: "image", action: "Mostra l'immagine" },
   other: { label: "File", icon: "file", action: "" },
 };
 
@@ -43,6 +44,7 @@ export function renderKnowledge(root, params) {
   let animate = true;
   let blobUrl = null;
   let searchTimer = 0;
+  let photos = null; // watches the photo blocks of the note shown, to load them when they come near
 
   function draw() {
     const { notes, status, error } = getNotes();
@@ -186,11 +188,100 @@ export function renderKnowledge(root, params) {
     if (/\.md$/i.test(path)) return { href: noteHref(path, hash) };
     if (isFolder(path)) return { href: dirHref(path.endsWith("/") ? path : `${path}/`), cls: "md-dir", before: icon("folder", "md-ico") };
     const kind = fileKind(path);
+    // a link to a photo opens it on the whole screen, with the rest of its gallery
+    if (kind === "image") return { href: fileHref(path), cls: "md-file md-photo-link", before: icon("image", "md-ico") };
     return { href: fileHref(path), cls: "md-file", before: icon(KINDS[kind].icon, "md-ico") };
   }
 
   /** A date links to the calendar when there was a lesson or a competition that day. */
   const dateHref = iso => (hasTraining(getData().data, iso) ? `#/calendar?d=${iso}&open=1` : null);
+
+  /** A photo of the repository is loaded by path when it comes near; one on the web keeps its address. */
+  function imageFor(from, href) {
+    if (/^https?:/i.test(href)) return { src: href };
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href)) return null;
+    const { path } = resolvePath(from, href);
+    return isHidden(path) ? null : { path };
+  }
+
+  /** The address of a photo in a note: a promise, so the full-screen view can wait for it too. */
+  function photoUrl(img) {
+    if (!img.dataset.path) return Promise.resolve(img.currentSrc || img.src);
+    const file = getNotes().files.find(f => f.path === img.dataset.path);
+    return file ? imageUrl(file) : Promise.reject(new Error(`Manca ${img.dataset.path}`));
+  }
+
+  function loadPhoto(img) {
+    if (img.dataset.state) return;
+    img.dataset.state = "loading";
+    const shot = img.closest(".md-shot");
+    img.addEventListener("load", () => {
+      img.dataset.state = "done";
+      shot.classList.add("loaded");
+      const ar = img.naturalWidth / img.naturalHeight;
+      if (ar) shot.closest(".md-photo").style.setProperty("--ar", ar.toFixed(4));
+      const blur = shot.querySelector(".md-blur");
+      if (blur) blur.style.backgroundImage = `url("${img.currentSrc || img.src}")`;
+    }, { once: true });
+    img.addEventListener("error", () => {
+      img.dataset.state = "done";
+      shot.classList.add("broken");
+    }, { once: true });
+    if (!img.dataset.path) return; // a photo on the web loads by itself
+    photoUrl(img).then(url => { img.src = url; }, () => {
+      img.dataset.state = "";
+      shot.classList.add("broken");
+    });
+  }
+
+  /** Photos load a screen ahead of the scroll, a whole gallery at a time. */
+  function watchPhotos(article) {
+    photos?.disconnect();
+    const blocks = article.querySelectorAll(".md-figure, .md-gallery");
+    blocks.forEach(b => b.querySelector(".md-figure .md-shot")?.insertAdjacentHTML("afterbegin", '<span class="md-blur" aria-hidden="true"></span>'));
+    if (!blocks.length) return;
+    photos = new IntersectionObserver(entries => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        photos.unobserve(e.target);
+        e.target.querySelectorAll(".md-shot img").forEach(loadPhoto);
+      }
+    }, { rootMargin: "900px 0px" });
+    blocks.forEach(b => photos.observe(b));
+  }
+
+  function openPhoto(shot) {
+    const block = shot.closest("[data-block]");
+    const imgs = [...block.querySelectorAll(".md-shot img")];
+    const items = imgs.map(img => ({ alt: img.alt, img }));
+    openLightbox(items, Number(shot.dataset.i) || 0, item => photoUrl(item.img), shot);
+  }
+
+  /** The gallery of the notes that holds a photo, with the section it is in. */
+  function galleryOf(path) {
+    for (const note of getNotes().notes.values()) {
+      let slug = "";
+      for (const b of note.blocks) {
+        if (b.type === "heading") { if (b.level >= 2) slug = b.slug; continue; }
+        if (b.type !== "images") continue;
+        const paths = b.items.map(it => resolvePath(note.path, it.href).path);
+        const i = paths.indexOf(path);
+        if (i !== -1) return { items: b.items.map((it, k) => ({ alt: it.alt, path: paths[k] })), i, href: noteHref(note.path, slug), place: note.short || note.title };
+      }
+    }
+    return null;
+  }
+
+  /** A link to a photo (the names of the glossary): the photo on the whole screen, and a way to its note. */
+  function openPhotoLink(link) {
+    const path = new URLSearchParams(link.getAttribute("href").split("?")[1] || "").get("file");
+    const found = path && galleryOf(path);
+    const items = found ? found.items.map(it => ({ ...it, href: found.href, place: found.place })) : [{ alt: link.textContent.trim(), path }];
+    openLightbox(items, found ? found.i : 0, item => {
+      const file = getNotes().files.find(f => f.path === item.path);
+      return file ? imageUrl(file) : Promise.reject(new Error(`Manca ${item.path}`));
+    }, link);
+  }
 
   function drawNote(first) {
     const note = getNotes().notes.get(route.path);
@@ -207,10 +298,11 @@ export function renderKnowledge(root, params) {
         ${head(note.path)}
         <h1 class="note-title">${esc(note.title)}</h1>
         ${sections.length >= 3 ? `<nav class="toc" aria-label="Sezioni della nota">${sections.map(h => `<a href="${noteHref(note.path, h.slug)}">${esc(h.text)}</a>`).join("")}</nav>` : ""}
-        <article class="md">${render(blocks, { link: href => linkFor(note.path, href), dateHref })}</article>
+        <article class="md">${render(blocks, { link: href => linkFor(note.path, href), image: href => imageFor(note.path, href), dateHref })}</article>
         ${legend(note.text)}
         <p class="note-foot"><span>${esc(note.path)}</span><a href="${githubUrl(note.path)}" target="_blank" rel="noopener">${icon("external")} Apri su GitHub</a></p>
       </section>`;
+    watchPhotos(root.querySelector(".md"));
     const terms = route.query ? termsIn(note, route.query) : [];
     if (terms.length) highlight(root.querySelector(".md"), terms);
     if (first) jump();
@@ -381,8 +473,14 @@ export function renderKnowledge(root, params) {
     }
     const load = e.target.closest("[data-load]");
     if (load) return loadMedia(load);
+    const shot = e.target.closest(".md-shot");
+    if (shot) return openPhoto(shot);
     const link = e.target.closest("a");
     if (!link) return;
+    if (link.classList.contains("md-photo-link") && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      return openPhotoLink(link);
+    }
     if (link.hasAttribute("data-back")) {
       e.preventDefault();
       if (movedInApp && history.length > 1) history.back();
@@ -414,6 +512,8 @@ export function renderKnowledge(root, params) {
     offNotes();
     offData();
     clearTimeout(searchTimer);
+    photos?.disconnect();
+    closeLightbox(true);
     if (blobUrl) URL.revokeObjectURL(blobUrl);
   };
 }

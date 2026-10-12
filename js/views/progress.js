@@ -1,11 +1,11 @@
 import { getState, subscribe, load, errorMessage } from "../store.js";
 import { TYPE_KEYS, typeOf, LEVELS } from "../types.js";
-import { MONTHS, MONTHS_SHORT, today, daysBetween, weekStart, fmtNum, fmtShortDate, fmtSpan, fmtWeek, whenLabel, plural, esc } from "../format.js";
+import { MONTHS, MONTHS_SHORT, today, daysBetween, weekStart, fmtNum, fmtShortDate, fmtSpan, fmtWeek, whenLabel, plural, cap, esc } from "../format.js";
 import { icon } from "../icons.js";
 import { toast, showTip, hideTip, typeBar } from "../ui.js";
 import {
   SEASON_MONTHS, seasons, seasonWeeks, monthMinutes, streakRuns, longestRun, currentRun,
-  lastSeasonSoFar, lastTwoFull, biggestChange, milestones, pastGoals,
+  lastSeasonSoFar, lastTwoFull, biggestChange, milestones, pastGoals, seasonAverages, monthAverages,
 } from "../progress-stats.js";
 
 // A weekly row starts one week before 1 September (a season's first week can begin in August) and spans a year.
@@ -48,7 +48,7 @@ export function renderProgress(root, params) {
         ${list.length ? seasonHero(list[0], data.sessions, now) : ""}
         ${goalsSection(data, now)}
         ${list.length
-          ? weeksSection(list, data.sessions, now) + seasonsSection(list)
+          ? weeksSection(list, data.sessions, now) + seasonsSection(list) + averagesSection(list, now) + monthsSection(data.sessions, now)
           : `<div class="card empty"><span class="cn" aria-hidden="true">空</span>Ancora nessuna sessione da mettere in grafico</div>`}
       </section>`;
     animate = false;
@@ -273,6 +273,104 @@ export function renderProgress(root, params) {
         <tbody>${[...list].reverse().map(s => `<tr><th scope="row">${s.label.slice(2)}</th>${order.map(k => `<td>${s.byType[k] ? hours(s.byType[k]) : "–"}</td>`).join("")}<td><b>${hours(s.minutes)}</b></td></tr>`).join("")}</tbody>
       </table>
     </details>`;
+  }
+
+  // ---------- averages ----------
+
+  /** Hours per week and per month in each season, breaks included, with this season in the tiles. */
+  function averagesSection(list, now) {
+    const rows = list.map(season => ({ season, a: seasonAverages(season, now) }));
+    const current = rows.find(r => r.season.current);
+    // the last season that is over and complete is the one to compare with
+    const before = rows.find(r => !r.season.current && !r.season.lateStart && r.season.count);
+    const tile = (value, label, ref) => `<div class="stat"><b>${value}</b><span>${label}</span>${ref ? `<small>${ref}</small>` : ""}</div>`;
+    const max = Math.max(...rows.map(r => r.a.perWeek), 0.1);
+    const active = rows.filter(r => r.season.count).slice(0, 2);
+    return `
+      <div class="section-title"><h2>Medie</h2><span>pause comprese</span></div>
+      ${current?.season.count ? `<div class="stats avg-stats">
+        ${tile(fmtNum(current.a.perWeek), "Ore a settimana", before && `${before.season.label}: ${fmtNum(before.a.perWeek)}`)}
+        ${tile(fmtNum(current.a.perMonth), "Ore al mese", before && `${before.season.label}: ${fmtNum(before.a.perMonth)}`)}
+        ${tile(fmtNum(current.a.sessionsPerWeek), "Sessioni a settimana", before && `${before.season.label}: ${fmtNum(before.a.sessionsPerWeek)}`)}
+      </div>` : ""}
+      <article class="card avg-card">
+        <span class="watermark" aria-hidden="true">均</span>
+        <p class="chart-note">Ore a settimana in ogni stagione, dal 1° settembre ${current?.season.count ? "a oggi" : "al 31 agosto"}: anche le settimane di pausa contano.</p>
+        <div class="av-rows">${rows.map(r => avgRow(r, max)).join("")}</div>
+        ${active.length ? `<p class="insight">Contando solo le settimane con almeno un allenamento: ${active.map(r => `${fmtNum(r.a.perActiveWeek)} ore nel ${r.season.label}`).join(", ")}.</p>` : ""}
+        ${avgTable(rows)}
+      </article>`;
+  }
+
+  function avgRow({ season, a }, max) {
+    const note = season.current ? "in corso" : season.lateStart ? `da ${MONTHS[Number(season.lateStart.slice(5, 7)) - 1]}` : "";
+    return `<div class="av-row${season.current ? " current" : ""}">
+      <span class="ss-label"><b>${season.label}</b>${note ? `<small>${note}</small>` : ""}</span>
+      <span class="av-track"><span class="av-bar" style="--f:${(a.perWeek / max).toFixed(4)}"></span><b class="av-value">${fmtNum(a.perWeek)} h</b></span>
+    </div>`;
+  }
+
+  function avgTable(rows) {
+    const cols = [...rows].reverse();
+    const line = (label, fn) => `<tr><th scope="row">${label}</th>${cols.map(r => `<td>${r.season.count ? fn(r.a) : "–"}</td>`).join("")}</tr>`;
+    return `<details class="numbers">
+      <summary>${icon("down", "chev")}Vedi i numeri</summary>
+      <div class="table-scroll"><table>
+        <caption>Medie per stagione</caption>
+        <thead><tr><td></td>${cols.map(r => `<th scope="col">${r.season.label.slice(2)}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${line("Ore a settimana", a => fmtNum(a.perWeek))}
+          ${line("Ore al mese", a => fmtNum(a.perMonth))}
+          ${line("Sessioni a sett.", a => fmtNum(a.sessionsPerWeek))}
+          ${line("Minuti a sessione", a => Math.round(a.sessionMinutes))}
+          ${line("Ore a sett. attiva", a => fmtNum(a.perActiveWeek))}
+        </tbody>
+      </table></div>
+      <p class="table-note">Una settimana attiva ha almeno un allenamento. La stagione in corso arriva a oggi; la prima parte dalla prima sessione.</p>
+    </details>`;
+  }
+
+  /** Each month of the year in its usual hours, averaged over the whole months on record. */
+  function monthsSection(sessions, now) {
+    const { slots, current } = monthAverages(sessions, now);
+    const counted = slots.filter(s => s.months.length);
+    if (!counted.length) return "";
+    const max = Math.max(...slots.map(s => s.avg), 60);
+    const top = counted.reduce((a, b) => (b.avg > a.avg ? b : a));
+    const name = k => MONTHS[SEASON_MONTHS[k]];
+    const cur = current && slots[current.index];
+    const label = s => `media di ${plural(s.months.length, "mese", "mesi")}`;
+    return `
+      <div class="section-title"><h2>Mese per mese</h2><span>ore in media</span></div>
+      <article class="card avg-card">
+        <p class="chart-note">Le ore di ogni mese, in media sugli anni: solo i mesi interi.</p>
+        <div class="mm-plot" role="group" aria-label="Ore in media per mese, da settembre ad agosto">
+          ${slots.map((s, k) => {
+            const on = k === current?.index;
+            // only this month carries its number: the busiest one is in the sentence below, every one in the table
+            const shown = s.months.length && on;
+            return `<button class="mm-col${on ? " now" : ""}" ${s.months.length ? `data-tip="${hours(s.avg)} h" data-tip-label="${esc(`${cap(name(k))} · ${label(s)}`)}"` : `data-tip="Nessun dato" data-tip-label="${esc(cap(name(k)))}"`} aria-label="${esc(`${cap(name(k))}: ${s.months.length ? `${hours(s.avg)} ore, ${label(s)}` : "nessun dato"}`)}">
+              ${shown ? `<em>${hours(s.avg)}</em>` : ""}
+              <i style="--h:${(s.avg / max).toFixed(4)}"></i>
+            </button>`;
+          }).join("")}
+        </div>
+        <div class="mm-axis" aria-hidden="true">${SEASON_MONTHS.map((m, k) => `<span${k === current?.index ? ' class="now"' : ""}>${MONTHS_SHORT[m].charAt(0).toUpperCase()}</span>`).join("")}</div>
+        <p class="insight">${cur?.months.length
+          ? `${current.day === 1 ? "Al 1°" : current.day === 8 || current.day === 11 ? `All'${current.day}` : `Al ${current.day}`} ${name(current.index)}: ${hours(current.minutes)} ${current.minutes === 60 ? "ora" : "ore"}; di solito ${name(current.index)} intero ne ha ${hours(cur.avg)}. `
+          : ""}Il mese con più ore, in media: ${name(slots.indexOf(top))}, con ${hours(top.avg)}.</p>
+        <details class="numbers">
+          <summary>${icon("down", "chev")}Vedi i numeri</summary>
+          <table>
+            <caption>Ore per mese, in media</caption>
+            <thead><tr><td></td><th scope="col">Media</th><th scope="col">Mesi contati</th><th scope="col">Min–max</th></tr></thead>
+            <tbody>${slots.map((s, k) => {
+              const v = s.months.map(x => x.minutes);
+              return `<tr><th scope="row">${MONTHS_SHORT[SEASON_MONTHS[k]]}</th><td>${s.months.length ? hours(s.avg) : "–"}</td><td>${s.months.length || "–"}</td><td>${v.length ? `${hours(Math.min(...v))}–${hours(Math.max(...v))}` : "–"}</td></tr>`;
+            }).join("")}</tbody>
+          </table>
+        </details>
+      </article>`;
   }
 
   // ---------- picking a week ----------

@@ -88,6 +88,61 @@ export const mimeType = path => MIME[path.split(".").pop().toLowerCase()] || "ap
 /** A playable address for a file of the repository (a blob URL: revoke it when done). */
 export const fileUrl = file => transport.fileUrl(getConfig(), file);
 
+// ---------- images ----------
+
+/** The photos already downloaded stay in this browser by blob sha: a sha never changes its bytes. */
+const IMAGE_CACHE = "kft-images-v1";
+const imageUrls = new Map(); // sha -> Promise of an address, for this session
+let running = 0;
+const waiting = [];
+
+/** At most four photos download at once, in the order they were asked for. */
+function slot(task) {
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      running++;
+      task().then(resolve, reject).finally(() => {
+        running--;
+        waiting.shift()?.();
+      });
+    };
+    if (running < 4) run();
+    else waiting.push(run);
+  });
+}
+
+async function cachedImage(file) {
+  const key = new Request(`./kft-image/${file.sha}`);
+  let cache = null;
+  try {
+    cache = await caches.open(IMAGE_CACHE);
+    const hit = await cache.match(key);
+    if (hit) return URL.createObjectURL(await hit.blob());
+  } catch { /* no Cache Storage here: download every time */ }
+  const blob = await slot(() => github.readBlobRaw(getConfig(), file.sha, mimeType(file.path)));
+  try { await cache?.put(key, new Response(blob, { headers: { "Content-Type": blob.type } })); }
+  catch { /* storage full or refused: the photo still shows */ }
+  return URL.createObjectURL(blob);
+}
+
+/** The address of a photo of the repository, downloaded once and then read from this browser. */
+export function imageUrl(file) {
+  if (DEV) return transport.fileUrl(getConfig(), file);
+  if (!imageUrls.has(file.sha)) {
+    const p = cachedImage(file);
+    imageUrls.set(file.sha, p);
+    p.catch(() => imageUrls.delete(file.sha)); // a failed download can be tried again
+  }
+  return imageUrls.get(file.sha);
+}
+
+/** Forgets the photos kept in this browser. */
+function forgetImages() {
+  for (const p of imageUrls.values()) p.then(url => URL.revokeObjectURL(url), () => {});
+  imageUrls.clear();
+  try { caches.delete(IMAGE_CACHE).catch(() => {}); } catch { /* no Cache Storage */ }
+}
+
 export const isFolder = path => path.endsWith("/") || state.files.some(f => f.path.startsWith(path + "/"));
 
 // ---------- the index of README.md ----------
@@ -258,6 +313,7 @@ export function loadNotes() {
 /** Forgets the notes on this device (when the token is removed). */
 export function forgetNotes() {
   try { localStorage.removeItem(CACHE_KEY); } catch { /* storage unavailable */ }
+  forgetImages();
   treeKey = "";
   set({ notes: null, files: [], index: [], order: null, dates: null, status: "idle", error: null, syncedAt: null });
 }
