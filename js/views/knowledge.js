@@ -213,6 +213,7 @@ export function renderKnowledge(root, params) {
 
   function loadPhoto(img) {
     if (img.dataset.state) return;
+    if (img.dataset.path && img.getAttribute("src")) img.removeAttribute("src");
     img.dataset.state = "loading";
     const shot = img.closest(".md-shot");
     img.addEventListener("load", () => {
@@ -253,6 +254,14 @@ export function renderKnowledge(root, params) {
   function openPhoto(shot) {
     const block = shot.closest("[data-block]");
     const imgs = [...block.querySelectorAll(".md-shot img")];
+    // a photo that could not be downloaded gets another try
+    for (const img of imgs) {
+      const s = img.closest(".md-shot");
+      if (!s.classList.contains("broken")) continue;
+      s.classList.remove("broken");
+      img.dataset.state = "";
+      loadPhoto(img);
+    }
     const items = imgs.map(img => ({ alt: img.alt, img }));
     openLightbox(items, Number(shot.dataset.i) || 0, item => photoUrl(item.img), shot);
   }

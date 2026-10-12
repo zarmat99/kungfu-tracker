@@ -62,10 +62,11 @@ export async function readBlob(cfg, sha) {
   return fromBase64((await request(cfg, "GET", `/repos/${cfg.repo}/git/blobs/${sha}`)).content);
 }
 
-/** Any file by its blob sha, as raw bytes: for videos and pages. */
-export async function readBlobRaw(cfg, sha, type) {
+/** Any file by its blob sha, as raw bytes: for videos, pages and photos. */
+export async function readBlobRaw(cfg, sha, type, signal) {
   const res = await fetch(`${API}/repos/${cfg.repo}/git/blobs/${sha}`, {
     headers: { Accept: "application/vnd.github.raw+json", Authorization: `Bearer ${cfg.token}` },
+    signal,
   });
   if (!res.ok) throw new GitHubError(res.status, res.statusText);
   return new Blob([await res.arrayBuffer()], { type });

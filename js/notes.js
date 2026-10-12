@@ -111,6 +111,23 @@ function slot(task) {
   });
 }
 
+/** One photo from GitHub. A request that hangs is dropped after 20 s, and a lost connection is tried once more. */
+async function downloadImage(file) {
+  for (let attempt = 0; ; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      return await github.readBlobRaw(getConfig(), file.sha, mimeType(file.path), ctrl.signal);
+    } catch (err) {
+      const network = !err.status || err.status >= 500;
+      if (attempt >= 1 || !network) throw err;
+      await new Promise(r => setTimeout(r, 800));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
 async function cachedImage(file) {
   const key = new Request(`./kft-image/${file.sha}`);
   let cache = null;
@@ -119,7 +136,7 @@ async function cachedImage(file) {
     const hit = await cache.match(key);
     if (hit) return URL.createObjectURL(await hit.blob());
   } catch { /* no Cache Storage here: download every time */ }
-  const blob = await slot(() => github.readBlobRaw(getConfig(), file.sha, mimeType(file.path)));
+  const blob = await slot(() => downloadImage(file));
   try { await cache?.put(key, new Response(blob, { headers: { "Content-Type": blob.type } })); }
   catch { /* storage full or refused: the photo still shows */ }
   return URL.createObjectURL(blob);
